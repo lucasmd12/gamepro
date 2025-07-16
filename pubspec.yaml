@@ -1,0 +1,108 @@
+name: lucasbeatsfederacao
+description: 'Aplicativo FEDERACAOMAD: Comunicação e organização.'
+publish_to: 'none'
+version: 2.1.0+4
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  
+  sentry_flutter: ^9.1.0
+  flutter_dotenv: ^5.0.0
+  package_info_plus: ^8.0.0
+  # Firebase
+  firebase_core: ^3.14.0
+  firebase_database: ^11.3.7
+  firebase_messaging: ^15.2.7
+  firebase_auth: ^5.6.0
+  firebase_crashlytics: ^4.0.0
+  firebase_app_check: ^0.3.2+7
+  
+
+  # Jitsi Meet SDK Flutter (oficial)
+  jitsi_meet_flutter_sdk: ^10.2.0
+
+  # Backend Communication
+  http: ^1.2.1
+  socket_io_client: ^3.1.2
+
+  # Estado e armazenamento
+  provider: ^6.1.2
+  shared_preferences: ^2.3.3
+  connectivity_plus: ^6.1.4
+
+  # UI e formatação
+  intl: ^0.20.2
+  flutter_svg: ^2.0.10+1
+  
+  # Melhorias de UI/UX
+  flutter_chat_ui: ^1.6.15
+  infinite_scroll_pagination: ^4.1.0
+  flutter_slidable: ^3.1.1
+  pull_to_refresh: ^2.0.0
+  flutter_sound: ^9.11.3
+
+  # Funcionalidades
+  image_picker: ^1.1.2
+  file_picker: ^8.1.2
+  permission_handler: ^12.0.0+1
+  flutter_secure_storage: ^9.2.2
+
+  # WebRTC para VoIP (mantido para compatibilidade)
+  flutter_webrtc: ^0.14.1
+  uuid: ^4.4.0
+
+  # Audio
+  audioplayers: ^6.0.0
+
+  # Cache e performance
+  cached_network_image: ^3.3.1
+  
+  # Notificações
+  flutter_local_notifications: ^19.2.1
+  just_audio: ^0.10.4
+  flutter_animate: ^4.0.0
+  animations: ^2.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+  sentry_dart_plugin: ^3.0.0 # Adicionado para Source Maps
+
+sentry:
+  upload_debug_symbols: true
+  upload_source_maps: true
+  commits:
+    auto: true
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images_png/app_logo.png"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/images_png/app_logo.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env 
+    - assets/images_png/
+    - assets/images_png/backgrounds/
+    - assets/images_png/clan_images/
+    - assets/audio/
+    - assets/fonts/
+
+  fonts:
+    - family: Gothic
+      fonts:
+        - asset: assets/fonts/gothic.ttf
+    - family: Digital
+      fonts:
+        - asset: assets/fonts/digital.ttf

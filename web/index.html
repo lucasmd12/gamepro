@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Federação Mad</title>
+  <link rel="icon" type="image/png" href="assets/images_png/app_icon_login_splash.png">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-image: url('assets/images_png/backgrounds/background_01.png');
+      background-size: cover;
+      background-position: center;
+      font-family: 'Gothic', sans-serif;
+      text-align: center;
+      color: white;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #1E1E2C; /* Cor de fallback caso a imagem não carregue */
+    }
+
+    .logo {
+      width: 150px;
+      height: 150px;
+      margin-bottom: 20px;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(145, 71, 255, 0.7);
+    }
+
+    h1 {
+      margin-top: 20px;
+      font-size: 2.5em;
+      text-shadow: 2px 2px 5px black;
+      color: #FFFFFF;
+    }
+
+    .subtitle {
+      font-size: 1.2em;
+      margin-bottom: 30px;
+      color: #CCCCCC;
+      text-shadow: 1px 1px 3px black;
+    }
+
+    .button-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 15px 30px;
+      font-size: 1.2em;
+      background-color: #9147FF;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+      transition: all 0.3s ease;
+      font-family: 'Gothic', sans-serif;
+      min-width: 250px;
+    }
+
+    button:hover {
+      background-color: #7E3CD6;
+      transform: translateY(-2px);
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 20px;
+      font-size: 0.8em;
+      color: #AAAAAA;
+    }
+
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 2em;
+      }
+      
+      button {
+        min-width: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <img src="assets/images_png/app_icon_login_splash.png" alt="Federação Mad Logo" class="logo">
+  <h1>FEDERAÇÃO MAD</h1>
+  <p class="subtitle">Comunicação e organização em tempo real</p>
+  
+  <div class="button-container">
+    <button onclick="playSound('splash_screen_sound')">Iniciar Aplicativo</button>
+    <button onclick="playSound('gun_sound_effect')">Entrar em Canal de Voz</button>
+  </div>
+
+  <div class="footer">
+    &copy; 2025 Federação Mad - Todos os direitos reservados
+  </div>
+
+  <script>
+    // Função para reproduzir sons
+    function playSound(soundName) {
+      const audio = new Audio();
+      
+      if (soundName === 'splash_screen_sound') {
+        audio.src = 'assets/audio/splash_screen_sound.mp3';
+      } else if (soundName === 'gun_sound_effect') {
+        audio.src = 'assets/audio/gun_sound_effect.mp3';
+      }
+      
+      audio.play().catch(error => {
+        console.error('Erro ao reproduzir áudio:', error);
+      });
+      
+      // Simulação de carregamento do app
+      if (soundName === 'splash_screen_sound') {
+        setTimeout(() => {
+          alert('Aplicativo mobile disponível para download. Acesse pelo seu dispositivo Android.');
+        }, 1500);
+      }
+    }
+    
+    // Pré-carregamento dos sons
+    document.addEventListener('DOMContentLoaded', function() {
+      const sounds = [
+        'assets/audio/splash_screen_sound.mp3',
+        'assets/audio/gun_sound_effect.mp3'
+      ];
+      
+      sounds.forEach(sound => {
+        const audio = new Audio();
+        audio.src = sound;
+      });
+    });
+  </script>
+</body>
+</html>
