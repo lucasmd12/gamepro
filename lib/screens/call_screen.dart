@@ -181,7 +181,7 @@ class _CallScreenState extends State<CallScreen> {
               icon: Icons.call_end,
               color: Colors.red,
               onPressed: () async {
- await voipService.rejectCall(callId: voipService.currentCall?.callId ?? '');
+ await voipService.rejectCall(callId: voipService.currentCall?.id ?? '');
  if (mounted) {
                   Navigator.of(context).pop();
                 }
@@ -194,8 +194,7 @@ class _CallScreenState extends State<CallScreen> {
               color: Colors.green,
               onPressed: () async {
                 await voipService.acceptCall(
-                  roomId: voipService.currentCall?.roomName ?? "", // Use ?? ''
-                  displayName: voipService.currentCall?.callerName ?? 'Usuário Desconhecido',
+ callId: voipService.currentCall?.id ?? '', displayName: voipService.currentCall?.callerName ?? 'Usuário Desconhecido',
                 );
                 // Assuming acceptCall handles state change and navigation if needed
               },

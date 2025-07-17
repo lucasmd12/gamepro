@@ -5,15 +5,16 @@ import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
-import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart'; // Importar PagingController
-import 'dart:io' as io; // Importar dart:io com prefixo
-import 'package:flutter_sound/flutter_sound.dart'; // Para gravação de áudio
-import 'package:permission_handler/permission_handler.dart'; // Para permissões de microfone
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
+import 'dart:io' as io;
+import 'package:flutter_sound/flutter_sound.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
 import 'package:lucasbeatsfederacao/services/chat_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
-import 'package:lucasbeatsfederacao/widgets/user_identity_widget.dart'; // Widget de identidade do usuário
-import 'package:lucasbeatsfederacao/services/socket_service.dart'; // Importar SocketService
+import 'package:lucasbeatsfederacao/widgets/user_identity_widget.dart';
+import 'package:lucasbeatsfederacao/services/socket_service.dart';
+import 'package:lucasbeatsfederacao/models/message_model.dart' as model; // Adicionando alias para o nosso modelo
 
 class ClanTextChatScreen extends StatefulWidget {
   final String clanId;
@@ -28,19 +29,18 @@ class ClanTextChatScreen extends StatefulWidget {
 class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
   final _uuid = const Uuid();
   ChatService? _chatService;
-  SocketService? _socketService; // Adicionar SocketService
+  SocketService? _socketService;
   String? _currentUserId;
-  final PagingController<int, types.Message> _pagingController = PagingController(firstPageKey: 0); // PagingController
-  final FlutterSoundRecorder _recorder = FlutterSoundRecorder(); // Recorder de áudio
+  final PagingController<int, types.Message> _pagingController = PagingController(firstPageKey: 0);
+  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _isRecording = false;
-  String? _audioPath;
   final TextEditingController _textController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _chatService = Provider.of<ChatService>(context, listen: false);
-    _socketService = Provider.of<SocketService>(context, listen: false); // Inicializar SocketService
+    _socketService = Provider.of<SocketService>(context, listen: false);
     _currentUserId = Provider.of<AuthProvider>(context, listen: false).currentUser?.id;
 
     _pagingController.addPageRequestListener((pageKey) {
@@ -50,15 +50,18 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     // Ouvir mensagens em tempo real do SocketService
     _socketService?.messageStream.listen((messageData) {
       if (messageData["chatType"] == "clan" && messageData["entityId"] == widget.clanId) {
-        final newMessage = types.TextMessage(
-          author: types.User(id: messageData["senderId"], firstName: messageData["senderName"]),
-          createdAt: messageData["createdAt"],
-          id: messageData["id"],
-          text: messageData["message"],
+        // Converte o mapa recebido para o nosso modelo de mensagem
+        final model.Message receivedModelMessage = model.Message.fromMap(messageData);
+        // Converte nosso modelo para o tipo de mensagem da UI de chat
+        final newMessage = _convertModelMessageToUiMessage(receivedModelMessage);
+        
+        final currentList = _pagingController.itemList ?? [];
+        currentList.insert(0, newMessage);
+        _pagingController.value = PagingState(
+          itemList: currentList,
+          nextPageKey: _pagingController.nextPageKey,
+          error: null,
         );
-        // Adiciona a nova mensagem ao topo da lista
-        _pagingController.value.itemList?.insert(0, newMessage);
-        _pagingController.notifyListeners(); // Notifica os listeners para atualizar a UI
       }
     });
 
@@ -90,7 +93,6 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
       setState(() {
         _isRecording = true;
       });
-      Logger.info('Recording started: $_audioPath');
     } catch (e) {
       Logger.error('Error starting recording: $e');
     }
@@ -103,8 +105,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
         _isRecording = false;
       });
       if (path != null) {
-        _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(path),
-        );
+        _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(path));
       }
     } catch (e) {
       Logger.error('Error stopping recording: $e');
@@ -115,72 +116,23 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
   void dispose() {
     _pagingController.dispose();
     _recorder.closeRecorder();
+    _textController.dispose();
     super.dispose();
   }
 
+  // CORREÇÃO APLICADA AQUI
   Future<void> _fetchPage(int pageKey) async {
     try {
+      // Chamada corrigida para usar argumentos posicionais
       final messages = await _chatService?.getMessages(
-        entityId: widget.clanId,
-        chatType: 'clan',
+        widget.clanId,
+        'clan',
         page: pageKey,
         limit: 20,
       );
 
       if (messages != null) {
-        final chatMessages = messages.map((msg) {
-          // Criar o usuário com informações completas de identidade
-          final user = types.User(
-            id: msg.senderId,
-            firstName: msg.senderName,
-            imageUrl: msg.senderAvatarUrl,
-            metadata: {
-              'clanFlag': msg.senderClanFlag,
-              'federationTag': msg.senderFederationTag,
-              'role': msg.senderRole,
-              'clanRole': msg.senderClanRole,
-            },
-          );
-
-          // Determinar o tipo de mensagem
-          switch (msg.messageType) {
-            case 'image':
-              return types.ImageMessage(
-                author: user,
-                createdAt: msg.createdAt.millisecondsSinceEpoch,
-                id: msg.id,
-                name: 'image.jpg',
-                size: 0,
-                uri: msg.fileUrl ?? '',
-              );
-            case 'file':
-              return types.FileMessage(
-                author: user,
-                createdAt: msg.createdAt.millisecondsSinceEpoch,
-                id: msg.id,
-                name: msg.fileName ?? 'file',
-                size: msg.fileSize ?? 0,
-                uri: msg.fileUrl ?? '',
-              );
-            case 'audio':
-              return types.AudioMessage(
-                author: user,
-                createdAt: msg.createdAt.millisecondsSinceEpoch,
-                id: msg.id,
-                name: 'audio.aac',
-                size: 0,
-                uri: msg.fileUrl ?? '',
-                duration: const Duration(seconds: 0),
-              );
-            default:
-              return types.TextMessage(
-                author: user,
-                createdAt: msg.createdAt.millisecondsSinceEpoch,
-                id: msg.id,
-                text: msg.message,
-              );
-          }
-        }).toList();
+        final chatMessages = messages.map(_convertModelMessageToUiMessage).toList();
 
         final isLastPage = chatMessages.length < 20;
         if (isLastPage) {
@@ -192,6 +144,58 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
       }
     } catch (error) {
       _pagingController.error = error;
+    }
+  }
+
+  types.Message _convertModelMessageToUiMessage(model.Message msg) {
+    final user = types.User(
+      id: msg.senderId,
+      firstName: msg.senderName,
+      imageUrl: msg.senderAvatarUrl,
+      metadata: {
+        'clanFlag': msg.senderClanFlag,
+        'federationTag': msg.senderFederationTag,
+        'role': msg.senderRole,
+        'clanRole': msg.senderClanRole,
+      },
+    );
+
+    switch (msg.messageType) {
+      case 'image':
+        return types.ImageMessage(
+          author: user,
+          createdAt: msg.createdAt.millisecondsSinceEpoch,
+          id: msg.id,
+          name: msg.fileName ?? 'image.jpg',
+          size: msg.fileSize?.toInt() ?? 0,
+          uri: msg.fileUrl ?? '',
+        );
+      case 'file':
+        return types.FileMessage(
+          author: user,
+          createdAt: msg.createdAt.millisecondsSinceEpoch,
+          id: msg.id,
+          name: msg.fileName ?? 'file',
+          size: msg.fileSize?.toInt() ?? 0,
+          uri: msg.fileUrl ?? '',
+        );
+      case 'audio':
+        return types.AudioMessage(
+          author: user,
+          createdAt: msg.createdAt.millisecondsSinceEpoch,
+          id: msg.id,
+          name: msg.fileName ?? 'audio.aac',
+          size: msg.fileSize?.toInt() ?? 0,
+          uri: msg.fileUrl ?? '',
+          duration: const Duration(seconds: 0), // Placeholder
+        );
+      default:
+        return types.TextMessage(
+          author: user,
+          createdAt: msg.createdAt.millisecondsSinceEpoch,
+          id: msg.id,
+          text: msg.message,
+        );
     }
   }
 
@@ -208,15 +212,17 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[600],
-                  borderRadius: BorderRadius.circular(2),
-                ),
+              Align(
                 alignment: Alignment.center,
+                child: Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
               const SizedBox(height: 20),
               Row(
@@ -295,8 +301,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     );
 
     if (result != null) {
-      _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(result.path),
-      );
+      _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(result.path));
     }
   }
 
@@ -308,8 +313,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     );
 
     if (result != null) {
-      _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(result.path),
-      );
+      _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(result.path));
     }
   }
 
@@ -332,38 +336,31 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
   }
 
   void _handleSendPressed(types.PartialText message) {
-    _chatService?.sendMessage(widget.clanId, message.text, 'clan',
-    );
+    _chatService?.sendMessage(widget.clanId, message.text, 'clan');
   }
 
   Widget _customMessageBuilder(types.Message message, {required int messageWidth}) {
     if (message.author.id == _currentUserId) {
-      // Mensagem do usuário atual - não precisa mostrar identidade completa
-      return _buildMessageContent(message); // Retorna o conteúdo da mensagem para o usuário atual
+      return _buildMessageContent(message);
     }
 
-    // Mensagem de outro usuário - mostrar identidade completa
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Identidade visual do usuário
           UserIdentityWidget(
             userId: message.author.id,
             username: message.author.firstName ?? 'Usuário',
             avatar: message.author.imageUrl,
             clanFlag: message.author.metadata?['clanFlag'],
             federationTag: message.author.metadata?['federationTag'],
-            role: message.author.metadata?["role"], // Já é String?
-            clanRole: message.author.metadata?["clanRole"], // Já é String?
+            role: message.author.metadata?["role"],
+            clanRole: message.author.metadata?["clanRole"],
             size: 32,
             showFullIdentity: true,
           ),
-          
           const SizedBox(height: 4),
-          
-          // Conteúdo da mensagem
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -436,7 +433,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = types.User(id: _currentUserId!); // O usuário atual para o chat UI
+    final user = types.User(id: _currentUserId ?? 'default_user_id');
 
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
@@ -459,16 +456,12 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
           ),
         ],
       ),
-      body: Chat(
-        messages: _pagingController.itemList ?? [],
-        onAttachmentPressed: _handleAttachmentPressed,
-        onMessageTap: _handleMessageTap,
-        onSendPressed: _handleSendPressed,
+      body: PagedChat( // Usando PagedChat para integração com PagingController
+        pagingController: _pagingController,
+        messageBuilder: (message, {required messageWidth}) => _customMessageBuilder(message, messageWidth: messageWidth),
         user: user,
         theme: const DarkChatTheme(),
-        customMessageBuilder: _customMessageBuilder,
-        showUserAvatars: true,
-        showUserNames: false, // Desabilitamos pois usamos nosso widget customizado
+        onSendPressed: _handleSendPressed,
         inputOptions: InputOptions(
           sendButtonVisibilityMode: SendButtonVisibilityMode.always,
         ),
@@ -488,13 +481,10 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
       ),
       child: Row(
         children: [
-          // Botão de anexo
           IconButton(
             onPressed: _handleAttachmentPressed,
             icon: const Icon(Icons.attach_file, color: Colors.grey),
           ),
-          
-          // Campo de texto
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -519,8 +509,6 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
               ),
             ),
           ),
-          
-          // Botão de enviar/gravar
           const SizedBox(width: 8),
           IconButton(
             icon: Icon(
@@ -543,5 +531,3 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     );
   }
 }
-
-

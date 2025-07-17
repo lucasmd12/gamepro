@@ -258,45 +258,48 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay>
   }
 
   void _acceptCall() async {
+    final voipService = Provider.of<VoIPService>(context, listen: false);
+
+    // Primeiro, aceita a chamada no serviço.
+    // Isso garante que o estado da chamada esteja correto antes de navegar.
     try {
-      final voipService = Provider.of<VoIPService>(context, listen: false);
-
-      // Dismiss overlay
-      widget.onDismiss();
-
-      // Navigate to call page - Add mounted check before context usage
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CallPage(
-              contactId: widget.callerId,
-              isIncomingCall: true,
-              roomName: widget.roomName, // Added roomName
-            ),
-          ),
-        );
-      }
-
-      // Accept the call - Corrected to pass callId
-      await voipService.acceptCall(callId: widget.callId, displayName: widget.callerName);
-
+      await voipService.acceptCall(callId: widget.callId);
     } catch (e) {
       Logger.error('Error accepting call: $e');
-      // If an error occurs after navigation, we still need to dismiss the overlay
-      // and potentially handle the error state on the CallPage.
-      // For now, just log and reject to ensure overlay is dismissed.
+      // Se falhar ao aceitar, rejeita para limpar o estado e fecha o overlay.
       _rejectCall();
+      return; // Interrompe a execução
     }
+
+    // Se a chamada foi aceita com sucesso, navega para a tela de chamada.
+    // Adicionado mounted check para segurança.
+    if (mounted) {
+      // A CallPage/CallScreen agora espera o roomId, que temos no widget.
+      // O parâmetro 'isIncomingCall' foi removido.
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CallPage(
+            contactId: widget.callerId,
+            roomName: widget.roomName,
+          ),
+        ),
+      );
+    }
+
+    // Finalmente, remove o overlay.
+    widget.onDismiss();
   }
 
   void _rejectCall() async {
     try {
       final voipService = Provider.of<VoIPService>(context, listen: false);
-      await voipService.rejectCall(roomId: widget.roomName);
+      // A chamada para rejectCall agora usa 'callId', não 'roomId'.
+      await voipService.rejectCall(callId: widget.callId);
     } catch (e) {
       Logger.error('Error rejecting call: $e');
     } finally {
+      // Garante que o overlay seja sempre removido.
       widget.onDismiss();
     }
   }
@@ -377,5 +380,3 @@ class _IncomingCallManagerState extends State<IncomingCallManager> {
     return widget.child;
   }
 }
-
-
