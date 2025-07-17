@@ -14,7 +14,7 @@ import 'package:lucasbeatsfederacao/services/chat_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/widgets/user_identity_widget.dart';
 import 'package:lucasbeatsfederacao/services/socket_service.dart';
-import 'package:lucasbeatsfederacao/models/message_model.dart' as model; // Adicionando alias para o nosso modelo
+import 'package:lucasbeatsfederacao/models/message_model.dart' as model;
 
 class ClanTextChatScreen extends StatefulWidget {
   final String clanId;
@@ -33,8 +33,6 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
   String? _currentUserId;
   final PagingController<int, types.Message> _pagingController = PagingController(firstPageKey: 0);
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
-  bool _isRecording = false;
-  final TextEditingController _textController = TextEditingController();
 
   @override
   void initState() {
@@ -47,12 +45,9 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
       _fetchPage(pageKey);
     });
 
-    // Ouvir mensagens em tempo real do SocketService
     _socketService?.messageStream.listen((messageData) {
       if (messageData["chatType"] == "clan" && messageData["entityId"] == widget.clanId) {
-        // Converte o mapa recebido para o nosso modelo de mensagem
         final model.Message receivedModelMessage = model.Message.fromMap(messageData);
-        // Converte nosso modelo para o tipo de mensagem da UI de chat
         final newMessage = _convertModelMessageToUiMessage(receivedModelMessage);
         
         final currentList = _pagingController.itemList ?? [];
@@ -76,54 +71,15 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     await _recorder.openRecorder();
   }
 
-  Future<void> _handleVoiceMessageRecording() async {
-    if (_isRecording) {
-      await _stopRecordingAndSend();
-    } else {
-      await _startRecording();
-    }
-  }
-
-  Future<void> _startRecording() async {
-    try {
-      await _recorder.startRecorder(
-        toFile: 'audio_${_uuid.v4()}.aac',
-        codec: Codec.aacADTS,
-      );
-      setState(() {
-        _isRecording = true;
-      });
-    } catch (e) {
-      Logger.error('Error starting recording: $e');
-    }
-  }
-
-  Future<void> _stopRecordingAndSend() async {
-    try {
-      final path = await _recorder.stopRecorder();
-      setState(() {
-        _isRecording = false;
-      });
-      if (path != null) {
-        _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(path));
-      }
-    } catch (e) {
-      Logger.error('Error stopping recording: $e');
-    }
-  }
-
   @override
   void dispose() {
     _pagingController.dispose();
     _recorder.closeRecorder();
-    _textController.dispose();
     super.dispose();
   }
 
-  // CORREÇÃO APLICADA AQUI
   Future<void> _fetchPage(int pageKey) async {
     try {
-      // Chamada corrigida para usar argumentos posicionais
       final messages = await _chatService?.getMessages(
         widget.clanId,
         'clan',
@@ -133,14 +89,16 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
 
       if (messages != null) {
         final chatMessages = messages.map(_convertModelMessageToUiMessage).toList();
-
         final isLastPage = chatMessages.length < 20;
+
         if (isLastPage) {
           _pagingController.appendLastPage(chatMessages);
         } else {
           final nextPageKey = pageKey + 1;
           _pagingController.appendPage(chatMessages, nextPageKey);
         }
+      } else {
+        _pagingController.appendLastPage([]);
       }
     } catch (error) {
       _pagingController.error = error;
@@ -187,7 +145,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
           name: msg.fileName ?? 'audio.aac',
           size: msg.fileSize?.toInt() ?? 0,
           uri: msg.fileUrl ?? '',
-          duration: const Duration(seconds: 0), // Placeholder
+          duration: const Duration(seconds: 0),
         );
       default:
         return types.TextMessage(
@@ -329,18 +287,14 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     }
   }
 
-  void _handleMessageTap(BuildContext context, types.Message message) {
-    if (message is types.FileMessage) {
-      // Implementar abertura de arquivo
-    }
-  }
-
   void _handleSendPressed(types.PartialText message) {
     _chatService?.sendMessage(widget.clanId, message.text, 'clan');
   }
 
   Widget _customMessageBuilder(types.Message message, {required int messageWidth}) {
-    if (message.author.id == _currentUserId) {
+    final bool isCurrentUser = message.author.id == _currentUserId;
+
+    if (isCurrentUser) {
       return _buildMessageContent(message);
     }
 
@@ -361,15 +315,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
             showFullIdentity: true,
           ),
           const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2D2D2D),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[700]!),
-            ),
-            child: _buildMessageContent(message),
-          ),
+          _buildMessageContent(message),
         ],
       ),
     );
@@ -377,10 +323,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
 
   Widget _buildMessageContent(types.Message message) {
     if (message is types.TextMessage) {
-      return Text(
-        message.text,
-        style: const TextStyle(color: Colors.white),
-      );
+      return Text(message.text);
     } else if (message is types.ImageMessage) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -406,7 +349,6 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
           Expanded(
             child: Text(
               message.name,
-              style: const TextStyle(color: Colors.white),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -414,13 +356,10 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
       );
     } else if (message is types.AudioMessage) {
       return Row(
-        children: [
-          const Icon(Icons.play_arrow, color: Colors.blue),
-          const SizedBox(width: 8),
-          const Text(
-            'Mensagem de voz',
-            style: TextStyle(color: Colors.white),
-          ),
+        children: const [
+          Icon(Icons.play_arrow, color: Colors.blue),
+          SizedBox(width: 8),
+          Text('Mensagem de voz'),
         ],
       );
     }
@@ -450,83 +389,34 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline, color: Colors.white),
-            onPressed: () {
-              // Mostrar informações do chat do clã
-            },
+            onPressed: () {},
           ),
         ],
       ),
-      body: PagedChat( // Usando PagedChat para integração com PagingController
-        pagingController: _pagingController,
-        messageBuilder: (message, {required messageWidth}) => _customMessageBuilder(message, messageWidth: messageWidth),
-        user: user,
-        theme: const DarkChatTheme(),
+      body: Chat(
+        messages: _pagingController.itemList ?? [],
         onSendPressed: _handleSendPressed,
-        inputOptions: InputOptions(
-          sendButtonVisibilityMode: SendButtonVisibilityMode.always,
+        user: user,
+        onAttachmentPressed: _handleAttachmentPressed,
+        customMessageBuilder: (message, {required messageWidth}) =>
+            _customMessageBuilder(message, messageWidth: messageWidth),
+        theme: const DarkChatTheme(
+          backgroundColor: Color(0xFF121212),
+          inputBackgroundColor: Color(0xFF1E1E1E),
+          primaryColor: Colors.blue,
+          secondaryColor: Color(0xFF2D2D2D),
+          inputTextColor: Colors.white,
+          sentMessageBodyTextStyle: TextStyle(color: Colors.white),
+          receivedMessageBodyTextStyle: TextStyle(color: Colors.white),
+          sentMessageContainerDecoration: BoxDecoration(
+            color: Colors.blue,
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+          receivedMessageContainerDecoration: BoxDecoration(
+            color: Color(0xFF2D2D2D),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
         ),
-        customBottomWidget: _buildCustomInput(),
-      ),
-    );
-  }
-
-  Widget _buildCustomInput() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        border: Border(
-          top: BorderSide(color: Colors.grey[700]!),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: _handleAttachmentPressed,
-            icon: const Icon(Icons.attach_file, color: Colors.grey),
-          ),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: TextField(
-                controller: _textController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Digite sua mensagem...', 
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: InputBorder.none,
-                ),
-                onSubmitted: (text) {
-                  if (text.isNotEmpty) {
-                    _handleSendPressed(types.PartialText(text: text));
-                    _textController.clear();
-                  }
-                },
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(
-              _isRecording ? Icons.stop : Icons.mic,
-              color: Colors.blue,
-            ),
-            onPressed: _handleVoiceMessageRecording,
-          ),
-          IconButton(
-            icon: const Icon(Icons.send, color: Colors.blue),
-            onPressed: () {
-              if (_textController.text.isNotEmpty) {
-                _handleSendPressed(types.PartialText(text: _textController.text));
-                _textController.clear();
-              }
-            },
-          ),
-        ],
       ),
     );
   }
