@@ -15,6 +15,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:lucasbeatsfederacao/screens/instaclan_feed_screen.dart';
 import 'package:lucasbeatsfederacao/screens/clan_wars_list_screen.dart';
 import 'package:lucasbeatsfederacao/screens/federation_management_screen.dart';
+import 'package:lucasbeatsfederacao/screens/qrr_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

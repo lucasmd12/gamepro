@@ -188,15 +188,8 @@ class MemberListItem extends StatelessWidget {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => CallScreen(
-              call: Call(
-                id: voipService.currentCall!.id,
-                callerId: currentUser.id,
-                receiverId: member.id,
-                type: CallType.audio,
-                status: CallStatus.pending,
-                startTime: DateTime.now(),
-              ),
-              isIncoming: false,
+              roomId: voipService.currentCall!.roomName ?? '',
+ isIncoming: false,
             ),
           ),
         );

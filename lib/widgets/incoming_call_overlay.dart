@@ -271,7 +271,6 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay>
           MaterialPageRoute(
             builder: (context) => CallPage(
               contactId: widget.callerId,
-              contactName: widget.callerName,
               isIncomingCall: true,
               roomName: widget.roomName, // Added roomName
             ),
@@ -279,8 +278,8 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay>
         );
       }
 
-      // Accept the call - Corrected to pass only callId
-      await voipService.acceptCall(roomId: widget.roomName, displayName: widget.callerName);
+      // Accept the call - Corrected to pass callId
+      await voipService.acceptCall(callId: widget.callId, displayName: widget.callerName);
 
     } catch (e) {
       Logger.error('Error accepting call: $e');
