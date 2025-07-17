@@ -56,9 +56,9 @@ class _FederationTextChatScreenState extends State<FederationTextChatScreen> {
 
   void _handleSendPressed(types.PartialText message) {
     _chatService?.sendMessage(
-      entityId: widget.federationId,
-      message: message.text,
-      chatType: 'federation',
+      widget.federationId,
+      message.text,
+      'federation',
     );
   }
 
@@ -88,10 +88,9 @@ class _FederationTextChatScreenState extends State<FederationTextChatScreen> {
         _messages.insert(0, message);
       });
       _chatService?.sendMessage(
-        entityId: widget.federationId,
-        message: '', // Mensagem vazia para imagem
-        chatType: 'federation',
-        file: io.File(result.path), // Passar io.File para o parâmetro 'file'
+        widget.federationId,
+        '', // Mensagem vazia para imagem
+        'federation',
       );    
     }
   }
@@ -115,10 +114,9 @@ class _FederationTextChatScreenState extends State<FederationTextChatScreen> {
         _messages.insert(0, message);
       });
       _chatService?.sendMessage(
-        entityId: widget.federationId,
-        message: '', // Mensagem vazia para arquivo
-        chatType: 'federation',
- file: io.File(result.files.single.path!), // Passar io.File para o parâmetro 'file'
+        widget.federationId,
+        '', // Mensagem vazia para arquivo
+        'federation',
       );
     }
   }
