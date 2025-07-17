@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import '../services/voip_service.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/user_identity_widget.dart';
-import '../services/socket_service.dart'; // Importar SocketService
+import '../services/socket_service.dart';
+import '../services/auth_service.dart'; // Importação necessária para AuthService
 
 class VoiceCallScreen extends StatefulWidget {
   final String channelId;
@@ -11,7 +12,7 @@ class VoiceCallScreen extends StatefulWidget {
   final String channelType; // 'global', 'clan', 'federation'
   final bool isVideoCall;
   final List<Map<String, dynamic>>? participants;
-  final String? callId; // Adicionar callId para chamadas existentes
+  final String? callId;
 
   const VoiceCallScreen({
     super.key,
@@ -20,7 +21,7 @@ class VoiceCallScreen extends StatefulWidget {
     required this.channelType,
     this.isVideoCall = false,
     this.participants,
-    this.callId, // Adicionar ao construtor
+    this.callId,
   });
 
   @override
@@ -29,22 +30,29 @@ class VoiceCallScreen extends StatefulWidget {
 
 class _VoiceCallScreenState extends State<VoiceCallScreen> {
   late VoIPService _voipService;
-  late SocketService _socketService; // Adicionar SocketService
+  late SocketService _socketService;
+  late AuthService _authService; // Adicionado para a correção
   bool _isConnecting = true;
   bool _isMuted = false;
   bool _isVideoEnabled = true;
   String? _error;
   List<Map<String, dynamic>> _currentParticipants = [];
-  String? _currentCallId; // Para armazenar o ID da chamada ativa
+  String? _currentCallId;
 
   @override
   void initState() {
     super.initState();
     _voipService = Provider.of<VoIPService>(context, listen: false);
-    _socketService = Provider.of<SocketService>(context, listen: false); // Inicializar SocketService
-    _voipService.init(_socketService); // Inicializar VoIPService com SocketService
+    _socketService = Provider.of<SocketService>(context, listen: false);
+    // Obtendo a instância do AuthService a partir do AuthProvider
+    _authService = Provider.of<AuthProvider>(context, listen: false).authService;
 
-    _currentCallId = widget.callId; // Se já existe um callId, use-o
+    // CORREÇÃO APLICADA:
+    // Passando o SocketService e o AuthService para o método init.
+    _voipService.init(_socketService, _authService);
+
+    _currentCallId = widget.callId;
+    _isVideoEnabled = widget.isVideoCall;
 
     _initializeCall();
   }
@@ -58,39 +66,38 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
         throw Exception('Usuário não autenticado');
       }
 
-      // Configurar callbacks
       _voipService.setCallbacks(
         onCallStarted: (roomId) {
-          setState(() {
-            _isConnecting = false;
-          });
+          if (mounted) {
+            setState(() {
+              _isConnecting = false;
+            });
+          }
         },
         onCallEnded: (roomId) {
-          Navigator.pop(context);
+          if (mounted) {
+            Navigator.pop(context);
+          }
         },
       );
 
-      // Gerar ID da sala baseado no canal (se não for uma chamada existente)
       final roomId = _currentCallId ?? VoIPService.generateRoomId(
         prefix: widget.channelType,
         entityId: widget.channelId,
       );
 
-      // Criar nome de exibição com identidade visual
       String displayName = user.username;
       if (user.federationTag != null && user.federationTag!.isNotEmpty) {
         displayName = '[${user.federationTag}] $displayName';
       }
 
-      // Se for uma chamada nova, inicie-a via API
       if (widget.callId == null) {
         await _voipService.initiateCall(
-          targetId: widget.channelId, // Ou o ID do usuário/clã/federação
+          targetId: widget.channelId,
           displayName: displayName,
           isVideoCall: widget.isVideoCall,
         );
       } else {
-        // Se for uma chamada existente (aceita), entre diretamente no Jitsi
         await _voipService.startVoiceCall(
           roomId: roomId,
           displayName: displayName,
@@ -98,27 +105,32 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
         );
       }
 
-      // Inicializar lista de participantes
       if (widget.participants != null) {
-        setState(() {
-          _currentParticipants = List.from(widget.participants!);
-        });
+        if (mounted) {
+          setState(() {
+            _currentParticipants = List.from(widget.participants!);
+          });
+        }
       }
 
     } catch (e) {
-      setState(() {
-        _isConnecting = false;
-        _error = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _isConnecting = false;
+          _error = e.toString();
+        });
+      }
     }
   }
 
   Future<void> _toggleMute() async {
     try {
       await _voipService.toggleAudio();
-      setState(() {
-        _isMuted = !_isMuted;
-      });
+      if (mounted) {
+        setState(() {
+          _isMuted = !_isMuted;
+        });
+      }
     } catch (e) {
       _showError('Erro ao alternar microfone: $e');
     }
@@ -127,9 +139,11 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
   Future<void> _toggleVideo() async {
     try {
       await _voipService.toggleVideo();
-      setState(() {
-        _isVideoEnabled = !_isVideoEnabled;
-      });
+      if (mounted) {
+        setState(() {
+          _isVideoEnabled = !_isVideoEnabled;
+        });
+      }
     } catch (e) {
       _showError('Erro ao alternar câmera: $e');
     }
@@ -146,22 +160,28 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
   Future<void> _endCall() async {
     try {
       if (_currentCallId != null) {
-        await _voipService.endCallApi(callId: _currentCallId!); // Chamar API para encerrar
+        await _voipService.endCallApi(callId: _currentCallId!);
       }
-      await _voipService.endCall(); // Encerrar Jitsi localmente
-      Navigator.pop(context);
+      await _voipService.endCall();
+      if (mounted) {
+        Navigator.pop(context);
+      }
     } catch (e) {
-      Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showParticipants() {
@@ -177,13 +197,16 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[600],
-                  borderRadius: BorderRadius.circular(2),
+              Align(
+                alignment: Alignment.center,
+                child: Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -194,6 +217,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
               Flexible(
@@ -203,7 +227,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                   itemBuilder: (context, index) {
                     final participant = _currentParticipants[index];
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: const Color(0xFF2D2D2D),
@@ -319,7 +343,6 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Container(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -357,7 +380,6 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
               ),
             ),
 
-            // Área principal (será ocupada pelo Jitsi Meet)
             Expanded(
               child: Container(
                 margin: const EdgeInsets.all(20),
@@ -397,13 +419,11 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
               ),
             ),
 
-            // Controles da chamada
             Container(
               padding: const EdgeInsets.all(20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Botão de participantes
                   _buildControlButton(
                     icon: Icons.people,
                     label: '${_currentParticipants.length}',
@@ -411,14 +431,12 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                     backgroundColor: const Color(0xFF2D2D2D),
                   ),
 
-                  // Botão de microfone
                   _buildControlButton(
                     icon: _isMuted ? Icons.mic_off : Icons.mic,
                     onPressed: _toggleMute,
                     backgroundColor: _isMuted ? Colors.red : const Color(0xFF2D2D2D),
                   ),
 
-                  // Botão de vídeo (apenas para chamadas de vídeo)
                   if (widget.isVideoCall)
                     _buildControlButton(
                       icon: _isVideoEnabled ? Icons.videocam : Icons.videocam_off,
@@ -426,7 +444,6 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                       backgroundColor: _isVideoEnabled ? const Color(0xFF2D2D2D) : Colors.red,
                     ),
 
-                  // Botão de trocar câmera (apenas para chamadas de vídeo)
                   if (widget.isVideoCall)
                     _buildControlButton(
                       icon: Icons.flip_camera_ios,
@@ -434,7 +451,6 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
                       backgroundColor: const Color(0xFF2D2D2D),
                     ),
 
-                  // Botão de encerrar chamada
                   _buildControlButton(
                     icon: Icons.call_end,
                     onPressed: _endCall,
@@ -452,39 +468,39 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> {
 
   @override
   void dispose() {
-    super.dispose();
+    // Adicionado para evitar chamar dispose duas vezes
+    if (mounted) {
+      super.dispose();
+    }
   }
 }
 
-
-
-  Widget _buildControlButton({
-    required IconData icon,
-    String? label,
-    required VoidCallback onPressed,
-    Color? backgroundColor,
-    double size = 48,
-  }) {
-    return Column(
-      children: [
-        SizedBox(
-          width: size,
-          height: size,
-          child: FloatingActionButton(
-            heroTag: null, // Evitar conflito de Hero tags
-            onPressed: onPressed,
-            backgroundColor: backgroundColor ?? const Color(0xFF2D2D2D),
-            child: Icon(icon, color: Colors.white, size: size * 0.5),
-          ),
+Widget _buildControlButton({
+  required IconData icon,
+  String? label,
+  required VoidCallback onPressed,
+  Color? backgroundColor,
+  double size = 48,
+}) {
+  return Column(
+    children: [
+      SizedBox(
+        width: size,
+        height: size,
+        child: FloatingActionButton(
+          heroTag: null,
+          onPressed: onPressed,
+          backgroundColor: backgroundColor ?? const Color(0xFF2D2D2D),
+          child: Icon(icon, color: Colors.white, size: size * 0.5),
         ),
-        if (label != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-          ),
-        ],
+      ),
+      if (label != null) ...[
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+        ),
       ],
-    );
-  }
-
+    ],
+  );
+}
