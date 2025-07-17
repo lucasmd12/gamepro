@@ -71,8 +71,8 @@ class _ChatWidgetState extends State<ChatWidget> {
     try {
       final chatService = Provider.of<ChatService>(context, listen: false);
       await chatService.getMessages(
-        entityId: widget.entityId,
-        chatType: widget.chatType,
+ widget.entityId,
+ widget.chatType,
       );
     } catch (e) {
       Logger.error('Erro ao carregar mensagens', error: e);
@@ -96,11 +96,11 @@ class _ChatWidgetState extends State<ChatWidget> {
 
     try {
       final chatService = Provider.of<ChatService>(context, listen: false);
-      await chatService.sendMessage(
-        entityId: widget.entityId,
-        message: message,
-        chatType: widget.chatType,
-      );
+      await chatService.sendMessage( // Corrigido para usar argumentos posicionais
+        widget.entityId,
+ message,
+        widget.chatType,
+ );
 
       _messageController.clear();
       _scrollToBottom();
