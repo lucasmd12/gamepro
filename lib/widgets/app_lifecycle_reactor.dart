@@ -38,6 +38,7 @@ class _AppLifecycleReactorState extends State<AppLifecycleReactor> with WidgetsB
         _updatePresence(true);
         break;
       case AppLifecycleState.inactive:
+        // Não faz nada em inactive para evitar atualizações desnecessárias
         break;
       case AppLifecycleState.paused:
         _updatePresence(false);
@@ -51,8 +52,11 @@ class _AppLifecycleReactorState extends State<AppLifecycleReactor> with WidgetsB
     }
   }
 
-  Future<void> _updatePresence(bool isOnline) async {
+  void _updatePresence(bool isOnline) {
+    // Não precisa ser async se a função chamada for void
     if (!mounted) return;
+    
+    // Usando read<T>() que é mais seguro fora do método build
     final authService = context.read<AuthService>();
     final chatService = context.read<ChatService>();
     final User? currentUser = authService.currentUser;
@@ -60,9 +64,15 @@ class _AppLifecycleReactorState extends State<AppLifecycleReactor> with WidgetsB
     if (currentUser != null) {
       final userId = currentUser.id;
       Logger.info("Updating presence for user $userId to: ${isOnline ? 'online' : 'offline'}");
-      chatService.atualizarStatusPresenca(isOnline).catchError((e, s) {
-         Logger.error("Error updating presence in background", error: e, stackTrace: s);
-      });
+      
+      // CORREÇÃO APLICADA AQUI:
+      // Envolvemos a chamada da função void em um bloco try-catch.
+      try {
+        chatService.atualizarStatusPresenca(isOnline);
+      } catch (e, s) {
+         Logger.error("Error updating presence", error: e, stackTrace: s);
+      }
+
     } else {
        Logger.warning("Cannot update presence: currentUser is null when trying to update.");
     }
@@ -80,5 +90,3 @@ class _AppLifecycleReactorState extends State<AppLifecycleReactor> with WidgetsB
     return widget.child;
   }
 }
-
-

@@ -29,32 +29,39 @@ class _CallHistoryFeedWidgetState extends State<CallHistoryFeedWidget> {
 
   Future<void> _loadUserIdAndCallHistory() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    _currentUserId = authProvider.currentUser?.id;
+    if (mounted) {
+      setState(() {
+        _currentUserId = authProvider.currentUser?.id;
+      });
+    }
     await _loadCallHistory();
   }
 
   Future<void> _loadCallHistory() async {
-    if (_currentUserId == null) {
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       final voipService = Provider.of<VoIPService>(context, listen: false);
       final history = await voipService.getCallHistory(
         clanId: widget.clanId,
         federationId: widget.federationId,
       );
-      setState(() {
-        _callHistory = history;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _callHistory = history;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       Logger.error("Error loading call history: $e");
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -149,14 +156,14 @@ class _CallHistoryFeedWidgetState extends State<CallHistoryFeedWidget> {
                 fontSize: 12,
               ),
             ),
-            if (timestamp != null) // Wrap with null check
- Text(
- _formatTimestamp(timestamp),
- style: TextStyle(
- color: Colors.grey.shade500,
- fontSize: 11,
+            if (timestamp != null)
+              Text(
+                _formatTimestamp(timestamp),
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 11,
+                ),
               ),
-            ),
           ],
         ),
         trailing: Row(
@@ -255,25 +262,23 @@ class _CallHistoryFeedWidgetState extends State<CallHistoryFeedWidget> {
     final roomName = call.roomId;
 
     final voipService = Provider.of<VoIPService>(context, listen: false);
-    // A função initiateCall no VoIPService precisa ser adaptada para aceitar callType, clanId, federationId
-    // Por enquanto, vamos simular uma chamada de voz
+    
     voipService.startVoiceCall(
       roomId: roomName,
       displayName: contactName ?? 'Usuário',
     );
 
+    // CORREÇÃO APLICADA AQUI:
+    // O parâmetro 'isIncomingCall' foi removido da chamada do construtor.
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CallPage(
           contactId: contactId,
           contactName: contactName ?? 'Usuário',
-          isIncomingCall: false,
           roomName: roomName,
         ),
       ),
     );
-    }
+  }
 }
-
-
