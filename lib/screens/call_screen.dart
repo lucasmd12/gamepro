@@ -1,4 +1,3 @@
-// lib/screens/call_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/services/voip_service.dart';
@@ -27,7 +26,6 @@ class _CallScreenState extends State<CallScreen> {
     super.initState();
     final voipService = Provider.of<VoIPService>(context, listen: false);
 
-    // Listen for call state changes to automatically close the screen when call ends
     voipService.onCallStateChanged = (state) {
       if (state == 'ended') {
         if (mounted) {
@@ -43,21 +41,15 @@ class _CallScreenState extends State<CallScreen> {
       backgroundColor: Colors.black,
       body: Consumer<VoIPService>(
         builder: (context, voipService, child) {
-          // Use the current call from the service if available, otherwise use the initial call
           final String currentRoomId = voipService.currentCall?.roomName ?? widget.roomId;
 
           return SafeArea(
             child: Column(
               children: [
-                // Header with call information
                 _buildCallHeader(currentRoomId, voipService),
-
-                // Video area (placeholder for future video implementation)
                 Expanded(
                   child: _buildVideoArea(),
                 ),
-
-                // Call controls
                 _buildCallControls(currentRoomId, voipService),
               ],
             ),
@@ -70,13 +62,12 @@ class _CallScreenState extends State<CallScreen> {
   Widget _buildCallHeader(String roomId, VoIPService voipService) {
     String statusText = '';
 
-    // Determine status text based on call status
     switch (voipService.currentCall?.status) {
       case CallStatus.pending:
         statusText = widget.isIncoming ? 'Chamada recebida' : 'Chamando...';
         break;
       case CallStatus.active:
-        statusText = voipService.formatCallDuration(); // Assumes VoIPService has this method
+        statusText = voipService.formatCallDuration();
         break;
       case CallStatus.ended:
         statusText = 'Chamada encerrada';
@@ -89,7 +80,6 @@ class _CallScreenState extends State<CallScreen> {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          // Avatar placeholder
           CircleAvatar(
             radius: 50,
             backgroundColor: Colors.grey[800],
@@ -100,8 +90,6 @@ class _CallScreenState extends State<CallScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // User name
           Text(
             widget.isIncoming ? voipService.currentCall?.callerName ?? 'Usuário Desconhecido' : voipService.currentCall?.receiverId ?? 'Usuário Desconhecido',
             style: const TextStyle(
@@ -111,8 +99,6 @@ class _CallScreenState extends State<CallScreen> {
             ),
           ),
           const SizedBox(height: 8),
-
-          // Call status
           Text(
             statusText,
             style: TextStyle(
@@ -130,7 +116,6 @@ class _CallScreenState extends State<CallScreen> {
       width: double.infinity,
       child: Stack(
         children: [
-          // Remote video placeholder
           Container(
             width: double.infinity,
             height: double.infinity,
@@ -143,8 +128,6 @@ class _CallScreenState extends State<CallScreen> {
               ),
             ),
           ),
-
-          // Local video placeholder
           Positioned(
             top: 20,
             right: 20,
@@ -169,47 +152,44 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   Widget _buildCallControls(String roomId, VoIPService voipService) {
-    // If it's an incoming call and still pending, show accept/reject buttons
     if (voipService.currentCall?.status == CallStatus.pending && widget.isIncoming) {
       return Container(
         padding: const EdgeInsets.all(20),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // Reject button
             _buildControlButton(
               icon: Icons.call_end,
               color: Colors.red,
               onPressed: () async {
- await voipService.rejectCall(callId: voipService.currentCall?.id ?? '');
- if (mounted) {
+                await voipService.rejectCall(callId: voipService.currentCall?.id ?? '');
+                if (mounted) {
                   Navigator.of(context).pop();
                 }
               },
             ),
-
-            // Accept button
             _buildControlButton(
               icon: Icons.call,
               color: Colors.green,
               onPressed: () async {
+                // CORREÇÃO APLICADA AQUI:
+                // Adicionado o parâmetro 'roomId' que estava faltando.
                 await voipService.acceptCall(
- callId: voipService.currentCall?.id ?? '', displayName: voipService.currentCall?.callerName ?? 'Usuário Desconhecido',
+                  callId: voipService.currentCall?.id ?? '',
+                  displayName: voipService.currentCall?.callerName ?? 'Usuário Desconhecido',
+                  roomId: roomId,
                 );
-                // Assuming acceptCall handles state change and navigation if needed
               },
             ),
           ],
         ),
       );
     } else {
-      // Controls for active call
       return Container(
         padding: const EdgeInsets.all(20),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // Mute button
             _buildControlButton(
               icon: _isMuted ? Icons.mic_off : Icons.mic,
               color: _isMuted ? Colors.red : Colors.grey[700]!,
@@ -220,8 +200,6 @@ class _CallScreenState extends State<CallScreen> {
                 voipService.toggleMute();
               },
             ),
-
-            // End call button
             _buildControlButton(
               icon: Icons.call_end,
               color: Colors.red,
@@ -232,8 +210,6 @@ class _CallScreenState extends State<CallScreen> {
                 }
               },
             ),
-
-            // Speaker button
             _buildControlButton(
               icon: _isSpeakerOn ? Icons.volume_up : Icons.volume_down,
               color: _isSpeakerOn ? Colors.blue : Colors.grey[700]!,
@@ -241,7 +217,6 @@ class _CallScreenState extends State<CallScreen> {
                 setState(() {
                   _isSpeakerOn = !_isSpeakerOn;
                 });
-                // TODO: Implement speaker toggle logic in VoIPService
               },
             ),
           ],
