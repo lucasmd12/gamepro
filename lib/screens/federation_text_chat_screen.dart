@@ -37,7 +37,7 @@ class _FederationTextChatScreenState extends State<FederationTextChatScreen> {
 
   void _loadMessages() async {
     try {
-      final fetchedMessages = await _chatService?.getMessages(entityId: widget.federationId, chatType: 'federation');
+      final fetchedMessages = await _chatService?.getMessages(widget.federationId, 'federation', page: 1, limit: 20);
       if (fetchedMessages != null) {
         setState(() {
           _messages.clear();
