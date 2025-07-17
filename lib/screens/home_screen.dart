@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:lucasbeatsfederacao/providers/auth_provider.dart'; // Usando o AuthProvider antigo para manter a compatibilidade com o código fornecido
+import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
 import 'package:lucasbeatsfederacao/models/role_model.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/screens/tabs/home_tab.dart';
@@ -28,10 +28,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late AudioPlayer _audioPlayer;
 
-  // Lista de widgets para as abas, será inicializada dinamicamente
   List<Widget> _widgetOptions = [];
 
-  // **[CIRURGIA 1 - REIMPLANTAÇÃO]** A lista de imagens de fundo foi reimplantada da versão 01.
   final List<String> _backgroundImages = [
     'assets/images_png/backgrounds/bg_mercedes_forest.png',
     'assets/images_png/backgrounds/bg_bmw_smoke_01.png',
@@ -48,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _initializeAudioPlayer();
 
-    // Lógica da versão 02 para inicialização dinâmica dos widgets
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final currentUser = authProvider.currentUser;
@@ -57,13 +54,14 @@ class _HomeScreenState extends State<HomeScreen> {
         _widgetOptions = <Widget>[
           const HomeTab(),
           const FederationExplorerScreen(),
-          // Passa o federationId do usuário atual, se existir.
-          FederationManagementScreen(federationId: currentUser?.federationId),
+          // CORREÇÃO APLICADA AQUI:
+          // Usamos o operador '??' para fornecer uma string vazia se federationId for nulo.
+          FederationManagementScreen(federationId: currentUser?.federationId ?? ''),
           const ContextualChatScreen(chatContext: 'global'),
           const ContextualVoiceScreen(voiceContext: 'global'),
           const InstaClanFeedScreen(),
           const ClanWarsListScreen(),
-          const QRRListScreen(), // Adicionando a tela de QRR
+          const QRRListScreen(),
           const SettingsScreen(),
         ];
       });
@@ -71,7 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // ... (O restante dos métodos _requestPermissions, _showSettingsDialog, _initializeAudioPlayer, dispose, _onItemTapped permanecem os mesmos da versão 02) ...
   Future<void> _requestPermissions() async {
     final transaction = Sentry.startTransaction(
       'requestPermissions',
@@ -212,7 +209,6 @@ class _HomeScreenState extends State<HomeScreen> {
        );
     }
 
-    // Lógica de exibição do AppBar (mantida da versão 02)
     IconData displayIcon = Icons.person;
     String displayText = currentUser.username ?? 'Usuário';
 
@@ -231,7 +227,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Scaffold(
-      // AppBar (mantido da versão 02)
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -293,32 +288,27 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ),
-      // **[CIRURGIA 2 - RECONSTITUIÇÃO]** O corpo do Scaffold agora é o Container com a decoração de imagem de fundo, exatamente como na versão 01.
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            // A imagem de fundo agora é selecionada dinamicamente com base no _selectedIndex
             image: AssetImage(_backgroundImages[_selectedIndex % _backgroundImages.length]),
             fit: BoxFit.cover,
-            // O filtro de escurecimento é aplicado para melhorar a legibilidade do conteúdo sobre a imagem
             colorFilter: ColorFilter.mode(
               Colors.black.withOpacity(0.6),
               BlendMode.darken,
             ),
           ),
         ),
-        // O filho do Container é o IndexedStack, que mostra a tela da aba selecionada.
         child: IndexedStack(
            index: _selectedIndex,
            children: _widgetOptions,
         ),
       ),
-      // BottomNavigationBar (mantido da versão 02)
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Início'),
           BottomNavigationBarItem(icon: Icon(Icons.travel_explore_outlined), activeIcon: Icon(Icons.travel_explore), label: 'Explorar'),
-          BottomNavigationBarItem(icon: Icon(Icons.group_work_outlined), activeIcon: Icon(Icons.group_work), label: 'Federação'), // Ícone atualizado para "Federação"
+          BottomNavigationBarItem(icon: Icon(Icons.group_work_outlined), activeIcon: Icon(Icons.group_work), label: 'Federação'),
           BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Chat'),
           BottomNavigationBarItem(icon: Icon(Icons.call_outlined), activeIcon: Icon(Icons.call), label: 'Chamadas'),
           BottomNavigationBarItem(icon: Icon(Icons.photo_library_outlined), activeIcon: Icon(Icons.photo_library), label: 'InstaClã'),
