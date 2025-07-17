@@ -31,54 +31,62 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     _loadReportData();
   }
 
-  void _loadReportData() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
 
-    try {
-      final statsService = Provider.of<StatsService>(context, listen: false);
-      final adminService = Provider.of<AdminService>(context, listen: false);
+void _loadReportData() async {
+  setState(() {
+    _isLoading = true;
+    _error = null;
+  });
 
-      // Fetch data for different report sections
-      final globalStats = await statsService.getGlobalStats(); // Pass selected period
-      // final userStats = await statsService.getUserStats(period: _selectedPeriod); // Assuming this method exists or will be added
-      // final clanFederationStats = await statsService.getClanFederationStats(period: _selectedPeriod); // Assuming this method exists or will be added
-      final systemLogs = await adminService.getSystemLogs(); // Assuming this method exists or will be added
+  try {
+    final statsService = Provider.of<StatsService>(context, listen: false);
+    final adminService = Provider.of<AdminService>(context, listen: false);
 
-      if (mounted) {
-        setState(() {
-          _reportData = {
-            'userReports': {
-              'totalUsers': globalStats['totalUsers'] ?? 0,
-              'onlineUsers': int.tryParse(globalStats['onlineUsers']?.toString() ?? '0') ?? 0,
- 'newRegistrations': 0, // Data source needs to be confirmed
- 'bannedUsers': 0, // Data source needs to be confirmed
-            },
-            'activityReports': {
-              'messagesSent': int.tryParse(globalStats['totalMessages']?.toString() ?? '0') ?? 0,
-              'callsMade': int.tryParse(globalStats['activeCalls']?.toString() ?? '0') ?? 0,
-              'avgOnlineTime': globalStats['avgOnlineTime'] ?? 'N/A',
-              'channelsCreated': globalStats['channelsCreated'] ?? 'N/A',
-            },
-            'organizationReports': {
-              'totalFederations': int.tryParse(globalStats['totalFederations']?.toString() ?? '0') ?? 0,
-              'totalClans': int.tryParse(globalStats['totalClans']?.toString() ?? '0') ?? 0,
- 'activeClans': 0, // Data source needs to be confirmed
- 'avgMembersPerClan': 'N/A', // Data source needs to be confirmed
-            },
-            'systemReports': {
-              'serverUptime': systemLogs['serverUptime'] ?? 'N/A',
-              'cpuUsage': systemLogs['cpuUsage'] ?? 'N/A',
-              'memoryUsage': systemLogs['memoryUsage'] ?? 'N/A',
-              'storageUsed': systemLogs['storageUsed'] ?? 'N/A',
-            },
-          };
-          _isLoading = false;
-        });
+    final globalStats = await statsService.getGlobalStats();
+    final systemLogs = await adminService.getSystemLogs();
 
-    } 
+    if (mounted) {
+      setState(() {
+        _reportData = {
+          'userReports': {
+            'totalUsers': (globalStats['totalUsers'] ?? 0).toString(),
+            'onlineUsers': (int.tryParse(globalStats['onlineUsers']?.toString() ?? '0') ?? 0).toString(),
+            'newRegistrations': '0',
+            'bannedUsers': '0',
+          },
+          'activityReports': {
+            'messagesSent': (int.tryParse(globalStats['totalMessages']?.toString() ?? '0') ?? 0).toString(),
+            'callsMade': (int.tryParse(globalStats['activeCalls']?.toString() ?? '0') ?? 0).toString(),
+            'avgOnlineTime': (globalStats['avgOnlineTime'] ?? 'N/A').toString(),
+            'channelsCreated': (globalStats['channelsCreated'] ?? 'N/A').toString(),
+          },
+          'organizationReports': {
+            'totalFederations': (int.tryParse(globalStats['totalFederations']?.toString() ?? '0') ?? 0).toString(),
+            'totalClans': (int.tryParse(globalStats['totalClans']?.toString() ?? '0') ?? 0).toString(),
+            'activeClans': '0',
+            'avgMembersPerClan': 'N/A',
+          },
+          'systemReports': {
+            'serverUptime': (systemLogs['serverUptime'] ?? 'N/A').toString(),
+            'cpuUsage': (systemLogs['cpuUsage'] ?? 'N/A').toString(),
+            'memoryUsage': (systemLogs['memoryUsage'] ?? 'N/A').toString(),
+            'storageUsed': (systemLogs['storageUsed'] ?? 'N/A').toString(),
+          },
+        };
+        _isLoading = false;
+      });
+    }
+  } catch (e, stackTrace) {
+    Logger.error('Erro ao carregar dados do relatório', error: e, stackTrace: stackTrace);
+    if (mounted) {
+      setState(() {
+        _error = 'Erro ao carregar dados do relatório: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+}
+
       catch (e, stackTrace) {
       Logger.error('Erro ao carregar dados do relatório', error: e, stackTrace: stackTrace);
       if (mounted) {
