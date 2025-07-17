@@ -64,7 +64,7 @@ class ChatService extends ChangeNotifier {
 
     try {
       // Enviar via Socket.IO para tempo real
-      _socketService.sendMessage(entityId, messageData);
+      _socketService.emit('new_message', messageData);
       Logger.info("Mensagem enviada via Socket.IO para $chatType/$entityId: $messageContent");
 
       // Opcional: Persistir via API REST se o backend não fizer isso automaticamente via socket
@@ -163,5 +163,5 @@ class ChatService extends ChangeNotifier {
       Logger.error("Erro ao processar mensagem em tempo real: $messageData", error: e, stackTrace: s);
     }
   }
-
+}
 

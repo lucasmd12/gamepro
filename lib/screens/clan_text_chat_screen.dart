@@ -103,11 +103,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
         _isRecording = false;
       });
       if (path != null) {
-        _chatService?.sendMessage(
-          entityId: widget.clanId,
- messageContent: '', // Mensagem vazia para áudio
-          chatType: 'clan',
- file: io.File(path),
+        _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(path),
         );
       }
     } catch (e) {
@@ -299,11 +295,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     );
 
     if (result != null) {
-      _chatService?.sendMessage(
-        entityId: widget.clanId,
- messageContent: '',
-        chatType: 'clan',
- file: io.File(result.path),
+      _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(result.path),
       );
     }
   }
@@ -316,11 +308,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     );
 
     if (result != null) {
-      _chatService?.sendMessage(
-        entityId: widget.clanId,
- messageContent: '',
-        chatType: 'clan',
- file: io.File(result.path),
+      _chatService?.sendMessage(widget.clanId, '', 'clan', file: io.File(result.path),
       );
     }
   }
@@ -332,10 +320,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
 
     if (result != null && result.files.single.path != null) {
       _chatService?.sendMessage(
-        entityId: widget.clanId,
- messageContent: '',
-        chatType: 'clan',
- file: io.File(result.files.single.path!),
+        widget.clanId, '', 'clan', file: io.File(result.files.single.path!),
       );
     }
   }
@@ -347,10 +332,7 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
   }
 
   void _handleSendPressed(types.PartialText message) {
-    _chatService?.sendMessage(
-      entityId: widget.clanId,
- messageContent: message.text,
-      chatType: 'clan',
+    _chatService?.sendMessage(widget.clanId, message.text, 'clan',
     );
   }
 

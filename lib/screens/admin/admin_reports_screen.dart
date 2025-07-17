@@ -233,10 +233,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                 Icons.people,
                 Colors.blue,
                 [
-                  _buildReportItem('Total de Usuários', '${_reportData['userReports']?['totalUsers'] ?? 'N/A'}', '+12%'),
-                  _buildReportItem('Usuários Online', '${_reportData['userReports']?['onlineUsers'] ?? 'N/A'}', '+8%'),
-                  _buildReportItem('Novos Registros', '${_reportData['userReports']?['newRegistrations'] ?? 'N/A'}', '+23%'),
-                  _buildReportItem('Usuários Banidos', '${_reportData['userReports']?['bannedUsers'] ?? 'N/A'}', '-2%'),
+                  _buildReportItem('Total de Usuários', (_reportData['userReports']?['totalUsers'] ?? 0).toString(), '+12%'),
+                  _buildReportItem('Usuários Online', (_reportData['userReports']?['onlineUsers'] ?? 0).toString(), '+8%'),
+                  _buildReportItem('Novos Registros', (_reportData['userReports']?['newRegistrations'] ?? 0).toString(), '+23%'),
+                  _buildReportItem('Usuários Banidos', (_reportData['userReports']?['bannedUsers'] ?? 0).toString(), '-2%'),
                 ],
               ),
 
@@ -248,8 +248,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                 Icons.analytics,
                 Colors.green,
                 [
-                  _buildReportItem('Mensagens Enviadas', '${_reportData['activityReports']?['messagesSent'] ?? 'N/A'}', '+15%'),
-                  _buildReportItem('Chamadas Realizadas', '${_reportData['activityReports']?['callsMade'] ?? 'N/A'}', '+7%'),
+                  _buildReportItem('Mensagens Enviadas', (_reportData['activityReports']?['messagesSent'] ?? 0).toString(), '+15%'),
+                  _buildReportItem('Chamadas Realizadas', (_reportData['activityReports']?['callsMade'] ?? 0).toString(), '+7%'),
                   _buildReportItem('Tempo Médio Online', '${_reportData['activityReports']?['avgOnlineTime'] ?? 'N/A'}', '+5%'),
                   _buildReportItem('Canais Criados', '${_reportData['activityReports']?['channelsCreated'] ?? 'N/A'}', '+12%'),
                 ],
@@ -263,9 +263,9 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                 Icons.account_tree,
                 Colors.purple,
                 [
-                  _buildReportItem('Total de Federações', '${_reportData['organizationReports']?['totalFederations'] ?? 'N/A'}', '+1'),
-                  _buildReportItem('Total de Clãs', '${_reportData['organizationReports']?['totalClans'] ?? 'N/A'}', '+8'),
-                  _buildReportItem('Clãs Ativos', '${_reportData['organizationReports']?['activeClans'] ?? 'N/A'}', '+5'),
+                  _buildReportItem('Total de Federações', (_reportData['organizationReports']?['totalFederations'] ?? 0).toString(), '+1'),
+                  _buildReportItem('Total de Clãs', (_reportData['organizationReports']?['totalClans'] ?? 0).toString(), '+8'),
+                  _buildReportItem('Clãs Ativos', (_reportData['organizationReports']?['activeClans'] ?? 0).toString(), '+5'),
                   _buildReportItem('Média de Membros/Clã', '${_reportData['organizationReports']?['avgMembersPerClan'] ?? 'N/A'}', '+2.1'),
                 ],
               ),

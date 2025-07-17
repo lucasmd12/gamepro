@@ -287,7 +287,7 @@ class AdminService {
       rethrow;
     }
   }
-}
+
   Future<Map<String, dynamic>> getUserStats() async {
     try {
       final response = await _apiService.get("/api/admin/user-stats");
@@ -315,5 +315,4 @@ class AdminService {
       rethrow;
     }
   }
-
-
+}
