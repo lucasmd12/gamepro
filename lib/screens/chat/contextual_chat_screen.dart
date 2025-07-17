@@ -6,6 +6,7 @@ import 'package:lucasbeatsfederacao/models/message_model.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart'; // Importação necessária para formatação de data
 
 class ContextualChatScreen extends StatefulWidget {
   final String chatContext; // e.g., 'global', 'federation_id', 'clan_id'
@@ -20,35 +21,32 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
-  List<Message> _messages = [];
+  
+  // Removido _messages = [], pois vamos usar o Consumer para obter os dados do ChatService
 
   @override
   void initState() {
     super.initState();
     _loadMessages();
+    // A chamada para listenToMessages foi ajustada para não esperar um retorno
     Provider.of<ChatService>(context, listen: false).listenToMessages(widget.chatContext, _getChatType());
   }
 
   String _getChatType() {
     if (widget.chatContext == 'global') {
       return 'global';
-    } else if (widget.chatContext.startsWith('federation_')) {
-      return 'federation';
-    } else if (widget.chatContext.startsWith('clan_')) {
-      return 'clan';
-    } else {
-      return 'unknown';
     }
+    // Assumindo que o chatContext para federação e clã é o ID deles
+    // A lógica pode precisar de ajuste dependendo do formato exato do chatContext
+    return 'unknown'; 
   }
 
   void _loadMessages() async {
     final chatService = Provider.of<ChatService>(context, listen: false);
     final chatType = _getChatType();
     try {
-      final loadedMessages = await chatService.getMessages(widget.chatContext, chatType);
-      setState(() {
-        _messages = loadedMessages;
-      });
+      // Apenas carrega as mensagens, o Consumer cuidará de exibi-las
+      await chatService.getMessages(widget.chatContext, chatType);
       _scrollToBottom();
     } catch (e, s) {
       Logger.error("Erro ao carregar mensagens iniciais", error: e, stackTrace: s);
@@ -66,8 +64,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
       await chatService.sendMessage(widget.chatContext, messageContent, chatType, file: file);
       _messageController.clear();
       _scrollToBottom();
-      // Refresh messages after sending
-      _loadMessages();
+      // Não é mais necessário chamar _loadMessages, o Consumer e o listener de socket farão a atualização
     } catch (e, s) {
       Logger.error("Erro ao enviar mensagem", error: e, stackTrace: s);
     }
@@ -99,6 +96,13 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
     });
   }
 
+  // CORREÇÃO APLICADA AQUI:
+  // A função _formatTimestamp foi adicionada dentro da classe.
+  String _formatTimestamp(DateTime timestamp) {
+    // Formata a hora como HH:mm
+    return DateFormat.Hm().format(timestamp);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -110,7 +114,6 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
       ),
       body: Column(
         children: [
-          // Cabeçalho do contexto
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -126,11 +129,12 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
             ),
           ),
           
-          // Lista de mensagens
           Expanded(
             child: Consumer<ChatService>(
               builder: (context, chatService, child) {
                 final messages = chatService.getCachedMessagesForEntity(widget.chatContext);
+                // Atualiza o scroll quando a lista de mensagens muda
+                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
                 return ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
@@ -144,7 +148,6 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
             ),
           ),
           
-          // Campo de entrada de mensagem
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -236,7 +239,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
               radius: 16,
               backgroundColor: Colors.blue,
               child: Text(
-                message.senderName[0].toUpperCase(),
+                message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -280,7 +283,6 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
                         errorBuilder: (context, error, stackTrace) => const Icon(Icons.error, color: Colors.red),
                       )
                     else if (message.type == 'video')
-                      // Placeholder for video. Actual video player integration would be more complex.
                       Container(
                         width: 200,
                         height: 150,
@@ -301,6 +303,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
+                    // A chamada agora funciona porque o método foi definido
                     _formatTimestamp(message.timestamp),
                     style: const TextStyle(
                       color: Colors.white60,
@@ -317,7 +320,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
               radius: 16,
               backgroundColor: Colors.green,
               child: Text(
-                message.senderName[0].toUpperCase(),
+                message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -330,3 +333,4 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
       ),
     );
   }
+}
