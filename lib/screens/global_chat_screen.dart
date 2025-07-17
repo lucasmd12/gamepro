@@ -10,6 +10,7 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
 import 'package:lucasbeatsfederacao/services/chat_service.dart';
+import 'dart:io' as io;
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/widgets/user_identity_widget.dart';
 import 'package:lucasbeatsfederacao/services/socket_service.dart'; // Importar SocketService
@@ -302,9 +303,8 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
         await _chatService?.sendMessage(
           entityId: 'global',
           message: '',
-          chatType: 'global',
-          fileUrl: result.path,
-          messageType: 'image',
+          chatType: 'global',          
+          file: io.File(result.path),
         );
       }
     } finally { 
@@ -325,9 +325,8 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
         await _chatService?.sendMessage(
           entityId: 'global',
           message: '',
-          chatType: 'global',
-          fileUrl: result.path,
-          messageType: 'image',
+          chatType: 'global',          
+          file: io.File(result.path),
         );
       }
     } finally { 
@@ -346,11 +345,8 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
         await _chatService?.sendMessage(
           entityId: 'global',
           message: '',
-          chatType: 'global',
-          fileUrl: result.files.single.path!,
-          messageType: 'file',
-          fileName: result.files.single.name,
-          fileSize: result.files.single.size,
+          chatType: 'global',          
+          file: io.File(result.files.single.path!),
         );
       }
     } finally { 
@@ -371,7 +367,6 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
         entityId: 'global',
         message: message.text,
         chatType: 'global',
-        messageType: 'text',
       );
     } finally { 
       setState(() { _isSendingMessage = false; });

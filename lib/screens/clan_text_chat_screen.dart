@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart'; // Importar PagingController
+import 'dart:io' as io; // Importar dart:io com prefixo
 import 'package:flutter_sound/flutter_sound.dart'; // Para gravação de áudio
 import 'package:permission_handler/permission_handler.dart'; // Para permissões de microfone
 import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
@@ -104,10 +105,9 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
       if (path != null) {
         _chatService?.sendMessage(
           entityId: widget.clanId,
-          message: '', // Mensagem vazia para áudio
+ messageContent: '', // Mensagem vazia para áudio
           chatType: 'clan',
-          fileUrl: path,
-          messageType: 'audio',
+ file: io.File(path),
         );
       }
     } catch (e) {
@@ -301,10 +301,9 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     if (result != null) {
       _chatService?.sendMessage(
         entityId: widget.clanId,
-        message: '',
+ messageContent: '',
         chatType: 'clan',
-        fileUrl: result.path,
-        messageType: 'image',
+ file: io.File(result.path),
       );
     }
   }
@@ -319,10 +318,9 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     if (result != null) {
       _chatService?.sendMessage(
         entityId: widget.clanId,
-        message: '',
+ messageContent: '',
         chatType: 'clan',
-        fileUrl: result.path,
-        messageType: 'image',
+ file: io.File(result.path),
       );
     }
   }
@@ -335,12 +333,9 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
     if (result != null && result.files.single.path != null) {
       _chatService?.sendMessage(
         entityId: widget.clanId,
-        message: '',
+ messageContent: '',
         chatType: 'clan',
-        fileUrl: result.files.single.path!,
-        messageType: 'file',
-        fileName: result.files.single.name,
-        fileSize: result.files.single.size,
+ file: io.File(result.files.single.path!),
       );
     }
   }
@@ -354,9 +349,8 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
   void _handleSendPressed(types.PartialText message) {
     _chatService?.sendMessage(
       entityId: widget.clanId,
-      message: message.text,
+ messageContent: message.text,
       chatType: 'clan',
-      messageType: 'text',
     );
   }
 

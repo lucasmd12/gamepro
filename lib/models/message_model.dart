@@ -37,6 +37,12 @@ class Message {
     this.senderClanFlag, // Inicializado no construtor
     this.senderFederationTag, // Inicializado no construtor
     this.senderClanRole, // Inicializado no construtor
+ this.fileSize,
+ this.thumbnailUrl,
+ this.callId,
+ this.callStatus,
+ this.callType,
+ this.callDuration,
   });
 
   factory Message.fromMap(Map<String, dynamic> map) {
@@ -106,8 +112,10 @@ class Message {
     if (fileUrl == null) return null;
     return fileUrl!.split('/').last.split('?').first;
   }
-  
-  num? get fileSize => null; // Placeholder - pode ser implementado futuramente
+
+  bool get isSystem {
+    return false;
+  }
   
   // Getter para extensão do arquivo
   String? get fileExtension {

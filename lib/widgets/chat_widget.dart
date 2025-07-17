@@ -156,33 +156,9 @@ class _ChatWidgetState extends State<ChatWidget> {
 
     return Consumer<ChatService>(
       builder: (context, chatService, child) {
-        // Tentar usar stream em tempo real se disponível
-        try {
-          return StreamBuilder<List<Message>>(
-            stream: chatService.listenToMessages(
-              entityId: widget.entityId,
-              chatType: widget.chatType,
-            ),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError) {
-                Logger.error('Erro no stream de mensagens', error: snapshot.error);
-                // Fallback para mensagens em cache
-                return _buildCachedMessagesList(chatService);
-              }
-
-              final messages = snapshot.data ?? [];
-              return _buildMessagesListView(messages);
-            },
-          );
-        } catch (e) {
-          // Firebase não disponível, usar mensagens em cache
-          Logger.info('Firebase não disponível, usando cache: $e');
-          return _buildCachedMessagesList(chatService);
-        }
+        // Exibir mensagens do cache gerenciado pelo ChatService
+        final cacheKey = widget.chatType == 'global' ? 'global' : widget.entityId;
+        return _buildMessagesListView(chatService.getCachedMessagesForEntity(cacheKey));
       },
     );
   }

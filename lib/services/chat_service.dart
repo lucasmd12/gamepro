@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:lucasbeatsfederacao/models/message_model.dart';
+import 'dart:io' as io;
 import 'package:lucasbeatsfederacao/services/api_service.dart';
 import 'package:lucasbeatsfederacao/services/firebase_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
@@ -28,7 +29,7 @@ class ChatService extends ChangeNotifier {
   }
 
 
-  Future<void> sendMessage(String entityId, String messageContent, String chatType, {File? file}) async {
+  Future<void> sendMessage(String entityId, String messageContent, String chatType, {io.File? file}) async {
     if (_authService.currentUser == null) {
       Logger.warning("Não autenticado para enviar mensagem.");
       return;
@@ -136,7 +137,7 @@ class ChatService extends ChangeNotifier {
       'userId': _authService.currentUser!.id,
       'isOnline': isOnline,
     };
-    _socketService.updatePresence(statusData);
+    _socketService.emit('update_presence', statusData);
     Logger.info("Status de presença atualizado para ${isOnline ? 'online' : 'offline'}.");
   }
 
@@ -152,17 +153,13 @@ class ChatService extends ChangeNotifier {
       final message = Message.fromMap(messageData);
       final entityId = message.clanId ?? message.federationId ?? message.id; // Global chat uses message.id as entityId
 
-      if (entityId != null) {
-        if (!_messages.containsKey(entityId)) {
-          _messages[entityId] = [];
-        }
-        _messages[entityId]!.add(message);
-        notifyListeners(); // Notifica a UI para atualizar
-        Logger.info("Mensagem em tempo real recebida e adicionada ao cache para $entityId.");
-      } else {
-        Logger.warning("Mensagem em tempo real sem entityId válido: $messageData");
+      if (!_messages.containsKey(entityId)) {
+        _messages[entityId] = [];
       }
-    } catch (e, s) {
+      _messages[entityId]!.add(message);
+      notifyListeners(); // Notifica a UI para atualizar
+      Logger.info("Mensagem em tempo real recebida e adicionada ao cache para $entityId.");
+        } catch (e, s) {
       Logger.error("Erro ao processar mensagem em tempo real: $messageData", error: e, stackTrace: s);
     }
   }

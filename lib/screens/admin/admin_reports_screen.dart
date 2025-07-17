@@ -42,9 +42,9 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
       final adminService = Provider.of<AdminService>(context, listen: false);
 
       // Fetch data for different report sections
-      final globalStats = await statsService.getGlobalStats();
-      final userStats = await adminService.getUserStats(); // Assuming this method exists or will be added
-      final clanFederationStats = await adminService.getClanFederationStats(); // Assuming this method exists or will be added
+      final globalStats = await statsService.getGlobalStats(period: _selectedPeriod); // Pass selected period
+      final userStats = await statsService.getUserStats(period: _selectedPeriod); // Assuming this method exists or will be added
+      final clanFederationStats = await statsService.getClanFederationStats(period: _selectedPeriod); // Assuming this method exists or will be added
       final systemLogs = await adminService.getSystemLogs(); // Assuming this method exists or will be added
 
       if (mounted) {
@@ -52,20 +52,20 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           _reportData = {
             'userReports': {
               'totalUsers': globalStats['totalUsers'] ?? 0,
-              'onlineUsers': globalStats['onlineUsers'] ?? 0,
-              'newRegistrations': userStats['newRegistrations'] ?? 0,
-              'bannedUsers': userStats['bannedUsers'] ?? 0,
+              'onlineUsers': int.tryParse(globalStats['onlineUsers']?.toString() ?? '0') ?? 0,
+              'newRegistrations': int.tryParse(userStats['newRegistrations']?.toString() ?? '0') ?? 0,
+              'bannedUsers': int.tryParse(userStats['bannedUsers']?.toString() ?? '0') ?? 0,
             },
             'activityReports': {
-              'messagesSent': globalStats['totalMessages'] ?? 0,
-              'callsMade': globalStats['activeCalls'] ?? 0,
+              'messagesSent': int.tryParse(globalStats['totalMessages']?.toString() ?? '0') ?? 0,
+              'callsMade': int.tryParse(globalStats['activeCalls']?.toString() ?? '0') ?? 0,
               'avgOnlineTime': globalStats['avgOnlineTime'] ?? 'N/A',
               'channelsCreated': globalStats['channelsCreated'] ?? 'N/A',
             },
             'organizationReports': {
-              'totalFederations': globalStats['totalFederations'] ?? 0,
-              'totalClans': globalStats['totalClans'] ?? 0,
-              'activeClans': clanFederationStats['activeClans'] ?? 0,
+              'totalFederations': int.tryParse(globalStats['totalFederations']?.toString() ?? '0') ?? 0,
+              'totalClans': int.tryParse(globalStats['totalClans']?.toString() ?? '0') ?? 0,
+              'activeClans': int.tryParse(clanFederationStats['activeClans']?.toString() ?? '0') ?? 0,
               'avgMembersPerClan': clanFederationStats['avgMembersPerClan'] ?? 'N/A',
             },
             'systemReports': {

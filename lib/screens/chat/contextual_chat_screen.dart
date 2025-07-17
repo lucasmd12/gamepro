@@ -236,7 +236,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
               radius: 16,
               backgroundColor: Colors.blue,
               child: Text(
-                message.senderName![0].toUpperCase(),
+                message.senderName[0].toUpperCase(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -262,7 +262,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
                 children: [
                   if (!isSystem && !isOwnMessage)
                     Text(
-                      message.senderName!,
+                      message.senderName,
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -292,7 +292,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
                     const SizedBox(height: 8),
                   ],
                   Text(
-                    message.message!,
+                    message.message,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: isSystem ? 12 : 14,
@@ -301,7 +301,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _formatTimestamp(message.timestamp!),
+                    _formatTimestamp(message.timestamp),
                     style: const TextStyle(
                       color: Colors.white60,
                       fontSize: 10,
@@ -317,7 +317,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
               radius: 16,
               backgroundColor: Colors.green,
               child: Text(
-                message.senderName![0].toUpperCase(),
+                message.senderName[0].toUpperCase(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,

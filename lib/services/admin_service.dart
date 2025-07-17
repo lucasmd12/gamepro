@@ -288,26 +288,19 @@ class AdminService {
     }
   }
 }
-
-
-
-
   Future<Map<String, dynamic>> getUserStats() async {
     try {
       final response = await _apiService.get("/api/admin/user-stats");
       if (response is Map<String, dynamic>) {
         return response;
       } else {
-        throw Exception("Formato de resposta inválido para getUserStats");
+        throw Exception('Formato de resposta inválido para getUserStats');
       }
     } catch (e, stackTrace) {
-      Logger.error("Erro ao buscar estatísticas de usuário", error: e, stackTrace: stackTrace);
+      Logger.error('Erro ao buscar estatísticas de usuário', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }
-
-
-
 
   Future<Map<String, dynamic>> getClanFederationStats() async {
     try {
@@ -315,10 +308,10 @@ class AdminService {
       if (response is Map<String, dynamic>) {
         return response;
       } else {
-        throw Exception("Formato de resposta inválido para getClanFederationStats");
+        throw Exception('Formato de resposta inválido para getClanFederationStats');
       }
     } catch (e, stackTrace) {
-      Logger.error("Erro ao buscar estatísticas de clãs e federações", error: e, stackTrace: stackTrace);
+      Logger.error('Erro ao buscar estatísticas de clãs e federações', error: e, stackTrace: stackTrace);
       rethrow;
     }
   }

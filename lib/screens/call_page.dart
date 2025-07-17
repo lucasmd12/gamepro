@@ -150,8 +150,7 @@ class _CallPageState extends State<CallPage> with TickerProviderStateMixin {
           animation: _pulseAnimation,
           builder: (context, child) {
             return Transform.scale(
-              scale: voipService.isCalling ||
-                     (widget.isIncomingCall && voipService.currentCall?.status == CallStatus.pending)
+              scale: voipService.isCalling || voipService.currentCall?.status == CallStatus.pending
                   ? _pulseAnimation.value
                   : 1.0,
               child: Container(

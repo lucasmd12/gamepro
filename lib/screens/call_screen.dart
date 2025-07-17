@@ -180,8 +180,9 @@ class _CallScreenState extends State<CallScreen> {
             _buildControlButton(
               icon: Icons.call_end,
               color: Colors.red,
-              onPressed: () async                 await voipService.rejectCall(roomId: voipService.currentCall?.roomName ?? "");''
-                if (mounted) {
+              onPressed: () async {
+ await voipService.rejectCall(callId: voipService.currentCall?.callId ?? '');
+ if (mounted) {
                   Navigator.of(context).pop();
                 }
               },

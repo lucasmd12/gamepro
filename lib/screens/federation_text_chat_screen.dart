@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
+import 'dart:io' as io; // Importar 'dart:io' com prefixo
 import 'package:lucasbeatsfederacao/services/chat_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 
@@ -30,18 +31,6 @@ class _FederationTextChatScreenState extends State<FederationTextChatScreen> {
     super.initState();
     _chatService = Provider.of<ChatService>(context, listen: false);
     _currentUserId = Provider.of<AuthProvider>(context, listen: false).currentUser?.id;
-
-    _chatService?.listenToMessages(entityId: widget.federationId, chatType: 'federation').listen((messages) {
-      setState(() {
-        _messages.clear();
-        _messages.addAll(messages.map((msg) => types.TextMessage(
-          author: types.User(id: msg.senderId, firstName: msg.senderName),
-          createdAt: msg.createdAt.millisecondsSinceEpoch,
-          id: msg.id,
-          text: msg.message,
-        )).toList().reversed); // Reverse to show latest at bottom
-      });
-    });
 
     _loadMessages();
   }
@@ -102,9 +91,8 @@ class _FederationTextChatScreenState extends State<FederationTextChatScreen> {
         entityId: widget.federationId,
         message: '', // Mensagem vazia para imagem
         chatType: 'federation',
-        fileUrl: result.path,
-        messageType: 'image',
-      );
+        file: io.File(result.path), // Passar io.File para o parâmetro 'file'
+      );    
     }
   }
 
@@ -130,8 +118,7 @@ class _FederationTextChatScreenState extends State<FederationTextChatScreen> {
         entityId: widget.federationId,
         message: '', // Mensagem vazia para arquivo
         chatType: 'federation',
-        fileUrl: result.files.single.path,
-        messageType: 'file',
+ file: io.File(result.files.single.path!), // Passar io.File para o parâmetro 'file'
       );
     }
   }

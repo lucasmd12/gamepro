@@ -162,7 +162,8 @@ class FEDERACAOMADApp extends StatelessWidget {
           firebaseService: context.read<FirebaseService>(),
           authService: context.read<AuthService>(),
           socketService: context.read<SocketService>(),
-          uploadService: context.read<UploadService>()))),        ChangeNotifierProvider<AuthProvider>(
+          uploadService: context.read<UploadService>())),
+        ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(
             context.read<SocketService>(),
             context.read<AuthService>(),

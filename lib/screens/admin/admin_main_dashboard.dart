@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/screens/admin/admin_user_management.dart';
 import 'package:lucasbeatsfederacao/screens/admin/admin_system_settings.dart';
 import 'package:lucasbeatsfederacao/screens/admin/admin_reports_screen.dart';
+import 'package:lucasbeatsfederacao/services/stats_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 
 class AdminMainDashboard extends StatefulWidget {
