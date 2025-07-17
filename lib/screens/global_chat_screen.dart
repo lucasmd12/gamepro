@@ -102,11 +102,10 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
       });
       if (path != null) {
         _chatService?.sendMessage(
-          entityId: 'global',
-          message: '', // Mensagem vazia para áudio
-          chatType: 'global',
-          fileUrl: path,
-          messageType: 'audio',
+          'global', // entityId
+          '', // messageContent (empty for file/audio)
+          'global', // chatType
+          file: io.File(path), // file
         );
       }
     } catch (e) {
@@ -124,9 +123,7 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
 
   Future<void> _fetchPage(int pageKey) async {
     try {
-      final messages = await _chatService?.getMessages(
-        entityId: 'global',
-        chatType: 'global',
+      final messages = await _chatService?.getMessages('global', 'global',
         page: pageKey,
         limit: 20,
       );
@@ -301,9 +298,9 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
 
       if (result != null) {
         await _chatService?.sendMessage(
-          entityId: 'global',
-          message: '',
-          chatType: 'global',          
+          'global', // entityId
+          '', // messageContent
+          'global', // chatType
           file: io.File(result.path),
         );
       }
@@ -323,9 +320,9 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
 
       if (result != null) {
         await _chatService?.sendMessage(
-          entityId: 'global',
-          message: '',
-          chatType: 'global',          
+          'global', // entityId
+          '', // messageContent
+          'global', // chatType
           file: io.File(result.path),
         );
       }
@@ -343,9 +340,9 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
 
       if (result != null && result.files.single.path != null) {
         await _chatService?.sendMessage(
-          entityId: 'global',
-          message: '',
-          chatType: 'global',          
+          'global', // entityId
+          '', // messageContent
+          'global', // chatType
           file: io.File(result.files.single.path!),
         );
       }
@@ -364,9 +361,9 @@ class _GlobalChatScreenState extends State<GlobalChatScreen> {
     setState(() { _isSendingMessage = true; });
     try {
       await _chatService?.sendMessage(
-        entityId: 'global',
-        message: message.text,
-        chatType: 'global',
+        'global', // entityId
+        message.text, // messageContent
+        'global', // chatType
       );
     } finally { 
       setState(() { _isSendingMessage = false; });
