@@ -77,8 +77,9 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           };
           _isLoading = false;
         });
-      }
-    } catch (e, stackTrace) {
+
+    } 
+      catch (e, stackTrace) {
       Logger.error('Erro ao carregar dados do relatório', error: e, stackTrace: stackTrace);
       if (mounted) {
         setState(() {
