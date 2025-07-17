@@ -260,22 +260,21 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay>
   void _acceptCall() async {
     final voipService = Provider.of<VoIPService>(context, listen: false);
 
-    // Primeiro, aceita a chamada no serviço.
-    // Isso garante que o estado da chamada esteja correto antes de navegar.
     try {
-      await voipService.acceptCall(callId: widget.callId);
+      // CORREÇÃO APLICADA AQUI:
+      // Adicionados os parâmetros 'displayName' e 'roomId' que estavam faltando.
+      await voipService.acceptCall(
+        callId: widget.callId,
+        displayName: widget.callerName,
+        roomId: widget.roomName,
+      );
     } catch (e) {
       Logger.error('Error accepting call: $e');
-      // Se falhar ao aceitar, rejeita para limpar o estado e fecha o overlay.
       _rejectCall();
-      return; // Interrompe a execução
+      return;
     }
 
-    // Se a chamada foi aceita com sucesso, navega para a tela de chamada.
-    // Adicionado mounted check para segurança.
     if (mounted) {
-      // A CallPage/CallScreen agora espera o roomId, que temos no widget.
-      // O parâmetro 'isIncomingCall' foi removido.
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -287,19 +286,16 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay>
       );
     }
 
-    // Finalmente, remove o overlay.
     widget.onDismiss();
   }
 
   void _rejectCall() async {
     try {
       final voipService = Provider.of<VoIPService>(context, listen: false);
-      // A chamada para rejectCall agora usa 'callId', não 'roomId'.
       await voipService.rejectCall(callId: widget.callId);
     } catch (e) {
       Logger.error('Error rejecting call: $e');
     } finally {
-      // Garante que o overlay seja sempre removido.
       widget.onDismiss();
     }
   }
@@ -328,10 +324,8 @@ class _IncomingCallManagerState extends State<IncomingCallManager> {
   }
 
   void _setupIncomingCallListener() {
-    // Listen for incoming call notifications
     final notificationService = Provider.of<NotificationService>(context, listen: false);
 
-    // This would be called when a push notification or socket event indicates an incoming call
     notificationService.onIncomingCall = (data) {
       final String callId = data["callId"];
       final String callerId = data["callerId"];
