@@ -5,7 +5,6 @@ import 'package:lucasbeatsfederacao/models/user_model.dart' show User;
 import 'package:lucasbeatsfederacao/models/role_model.dart';
 import 'package:lucasbeatsfederacao/services/voip_service.dart';
 import 'package:lucasbeatsfederacao/screens/call_screen.dart';
-import 'package:lucasbeatsfederacao/models/call_model.dart';
 
 class MemberListItem extends StatelessWidget {
   final Member member;

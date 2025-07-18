@@ -5,7 +5,6 @@ import 'package:lucasbeatsfederacao/services/api_service.dart';
 import 'package:lucasbeatsfederacao/services/firebase_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/services/auth_service.dart';
-import 'package:lucasbeatsfederacao/models/role_model.dart';
 import 'package:lucasbeatsfederacao/services/socket_service.dart'; // Importar SocketService
 import 'package:lucasbeatsfederacao/services/upload_service.dart'; // Importar UploadService
 

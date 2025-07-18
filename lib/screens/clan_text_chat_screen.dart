@@ -11,7 +11,6 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
 import 'package:lucasbeatsfederacao/services/chat_service.dart';
-import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/widgets/user_identity_widget.dart';
 import 'package:lucasbeatsfederacao/services/socket_service.dart';
 import 'package:lucasbeatsfederacao/models/message_model.dart' as model;
@@ -408,14 +407,14 @@ class _ClanTextChatScreenState extends State<ClanTextChatScreen> {
           inputTextColor: Colors.white,
           sentMessageBodyTextStyle: TextStyle(color: Colors.white),
           receivedMessageBodyTextStyle: TextStyle(color: Colors.white),
-          sentMessageContainerDecoration: BoxDecoration(
-            color: Colors.blue,
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-          ),
-          receivedMessageContainerDecoration: BoxDecoration(
-            color: Color(0xFF2D2D2D),
-            borderRadius: BorderRadius.all(Radius.circular(12)),
-          ),
+          // sentMessageContainerDecoration: BoxDecoration( // Removido: parâmetro não reconhecido
+          //   color: Colors.blue,
+          //   borderRadius: BorderRadius.all(Radius.circular(12)),
+          // ),
+          // receivedMessageContainerDecoration: BoxDecoration( // Removido: parâmetro não reconhecido
+          //   color: Color(0xFF2D2D2D),
+          //   borderRadius: BorderRadius.all(Radius.circular(12)),
+          // ),
         ),
       ),
     );

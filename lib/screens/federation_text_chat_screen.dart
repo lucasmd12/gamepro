@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
-import 'dart:io' as io; // Importar 'dart:io' com prefixo
+// Importar 'dart:io' com prefixo
 import 'package:lucasbeatsfederacao/services/chat_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 
