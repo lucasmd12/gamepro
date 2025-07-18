@@ -1,0 +1,113 @@
+// Modificado para build em debug - 30/05/2025
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+    id 'com.google.gms.google-services' // Adicionado plugin Google Services
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('../local.properties') // Adjusted path relative to app module
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def getPubspecVersionInfo() {
+    def pubspecFile = rootProject.file("../pubspec.yaml") // Path relative to app module
+    if (!pubspecFile.exists()) {
+        throw new GradleException("File not found: ${pubspecFile.absolutePath}")
+    }
+    def pubspecContent = pubspecFile.text
+    def versionLine = pubspecContent.readLines().find { it.startsWith("version:") }
+    if (versionLine == null) {
+        throw new GradleException("Missing 'version:' line in pubspec.yaml")
+    }
+    def matcher = versionLine =~ /version:\s*(\d+\.\d+\.\d+)\+(\d+)/
+    if (!matcher.find()) {
+        matcher = versionLine =~ /version:\s*(\d+\.\d+\.\d+)/
+        if (!matcher.find()) {
+             throw new GradleException("Invalid 'version:' format in pubspec.yaml. Expected 'X.Y.Z+B' or 'X.Y.Z'. Found: ${versionLine}")
+        }
+        return [name: matcher.group(1), code: 1]
+    }
+    return [name: matcher.group(1), code: matcher.group(2).toInteger()]
+}
+
+def versionInfo = getPubspecVersionInfo()
+
+android {
+    namespace "com.lucasbeats.federacao"
+    compileSdk 35
+    ndkVersion "25.1.8937393"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    defaultConfig {
+        applicationId "com.lucasbeats.federacao"
+        minSdkVersion 24
+        targetSdkVersion 35
+        versionCode versionInfo.code
+        versionName versionInfo.name
+        multiDexEnabled true
+
+        // 👇 CORTA x86 e x86_64 pra evitar erro no Sentry e no Jetifier
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug // Usa debug como release
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+
+    lintOptions {
+        disable 'InvalidPackage'
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    configurations {
+        all {
+            exclude group: 'io.github.webrtc-sdk', module: 'android'
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0"
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test:runner:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+}

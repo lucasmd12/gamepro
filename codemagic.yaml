@@ -1,0 +1,41 @@
+workflows:
+  android-debug-build-insecure:
+    name: Federacaomad Android Debug Build (google-services.json no repo)
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+
+    environment:
+      flutter: stable
+      vars:
+        JVM_ARGS: "-Xmx12g"
+      groups:
+        - firebase_app_check_ci
+
+    scripts:
+      - name: Configurar Flutter
+        script: |
+          flutter config --enable-android
+          flutter doctor
+
+      - name: Limpar cache do Flutter
+        script: |
+          flutter clean
+
+      - name: Obter dependências Flutter
+        script: |
+          flutter pub get
+
+      - name: Construir APK Debug
+        script: |
+          cd $CM_BUILD_DIR
+          flutter build apk --debug
+
+    artifacts:
+      - build/app/outputs/flutter-apk/app-debug.apk
+
+      

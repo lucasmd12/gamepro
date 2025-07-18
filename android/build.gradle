@@ -1,0 +1,32 @@
+buildscript {
+    ext.kotlin_version = '2.1.0' // Versão Kotlin atualizada para 2.1.0 conforme erro de build
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.3.0' // Atualizado para 8.3.0 conforme recomendação
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.google.gms:google-services:4.4.2' // Adicionado classpath do Google Services
+
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+
+// Bloco problemático removido para evitar o erro "It is too late to set compileSdk"
+// O compileSdk deve ser definido apenas no android/app/build.gradle
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

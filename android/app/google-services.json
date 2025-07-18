@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "626018484134",
+    "project_id": "lucasbeats-2025",
+    "storage_bucket": "lucasbeats-2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626018484134:android:b0fd014b5eca9b39049967",
+        "android_client_info": {
+          "package_name": "com.lucasbeats.federacao"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDUzeMoGAfGHpzlNUfe--JHdBjqMoSwpHM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
