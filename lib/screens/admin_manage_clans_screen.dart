@@ -526,17 +526,8 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
   bool _canEditClan(Clan clan) {
     if (_currentUser == null) return false;
 
-    // 1. Obtenha o AuthProvider a partir do context.
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+return permissionService.canManageClan(clan);
 
-    // 2. Crie uma instância do PermissionService, passando o AuthProvider.
-    final permissionService = PermissionService(authProvider: authProvider);
-
-    // 3. Chame o método na INSTÂNCIA do serviço.
-    // O método canManageClan provavelmente não precisa mais do _currentUser como parâmetro,
-    // pois o serviço já o tem através do AuthProvider. Verifique a definição do método.
-    // Assumindo que a assinatura agora é `canManageClan(String clanId)`.
-    return permissionService.canManageClan(clan.id);
   }
 
   // Helper to check delete permission for a given clan (only ADM_MASTER)
