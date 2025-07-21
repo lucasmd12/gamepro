@@ -5,12 +5,7 @@ import 'package:lucasbeatsfederacao/services/notification_service.dart';
 import 'package:lucasbeatsfederacao/screens/call_page.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 
-// =================================================================================
-// MUDANÇA 1: O widget principal agora é o "Manager", renomeado para IncomingCallOverlay.
-// Ele é um StatefulWidget que gerencia seu próprio estado (se o overlay está visível ou não).
-// =================================================================================
 class IncomingCallOverlay extends StatefulWidget {
-  // [CORRIGIDO] Adicionado o parâmetro 'child' para que ele possa envolver o MaterialApp.
   final Widget child;
 
   const IncomingCallOverlay({
@@ -23,25 +18,19 @@ class IncomingCallOverlay extends StatefulWidget {
 }
 
 class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
-  // Armazena os dados da chamada recebida. Se for nulo, nenhum overlay é mostrado.
   Map<String, dynamic>? _incomingCallData;
 
   @override
   void initState() {
     super.initState();
-    // Atrasamos a configuração do listener para garantir que o context está pronto.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupIncomingCallListener();
     });
   }
 
   void _setupIncomingCallListener() {
-    // Garante que o widget ainda está na árvore antes de acessar o Provider.
     if (!mounted) return;
-
     final notificationService = Provider.of<NotificationService>(context, listen: false);
-
-    // Quando uma chamada chegar, atualizamos o estado com os dados da chamada.
     notificationService.onIncomingCall = (data) {
       if (mounted) {
         setState(() {
@@ -51,7 +40,6 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
     };
   }
 
-  // Função para dispensar o overlay, limpando os dados da chamada.
   void _dismissOverlay() {
     if (mounted) {
       setState(() {
@@ -63,36 +51,43 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
   @override
   Widget build(BuildContext context) {
     // =================================================================================
-    // MUDANÇA 2: Usamos um Stack para desenhar o app principal e o overlay por cima.
+    // CORREÇÃO APLICADA AQUI
+    // O Stack foi envolvido por um widget Directionality.
+    // Isso fornece a direção do texto (esquerda-para-direita) que o Stack precisa
+    // para resolver alinhamentos direcionais, eliminando o erro.
     // =================================================================================
-    return Stack(
-      children: [
-        // A base do Stack é o 'child', ou seja, todo o seu MaterialApp.
-        widget.child,
+    return Directionality(
+      textDirection: TextDirection.ltr, // Fornece a "bússola" para os widgets filhos
+      child: Stack(
+        // O alignment do Stack (implícito ou explícito) agora funcionará corretamente.
+        children: [
+          // A base do Stack é o 'child', ou seja, todo o seu MaterialApp.
+          widget.child,
 
-        // Se houver dados de uma chamada recebida, mostramos o widget de notificação.
-        if (_incomingCallData != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: _CallNotificationWidget(
-              callId: _incomingCallData!["callId"],
-              callerId: _incomingCallData!["callerId"],
-              callerName: _incomingCallData!["callerName"],
-              roomName: _incomingCallData!["roomName"],
-              onDismiss: _dismissOverlay,
+          // Se houver dados de uma chamada recebida, mostramos o widget de notificação.
+          if (_incomingCallData != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _CallNotificationWidget(
+                callId: _incomingCallData!["callId"],
+                callerId: _incomingCallData!["callerId"],
+                callerName: _incomingCallData!["callerName"],
+                roomName: _incomingCallData!["roomName"],
+                onDismiss: _dismissOverlay,
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-
 // =================================================================================
-// MUDANÇA 3: O widget da UI da notificação foi extraído para uma classe separada.
-// Todo o seu código de UI e animação foi movido para cá, sem alterações na lógica.
+// O widget _CallNotificationWidget não precisa de alterações.
+// Ele já está dentro de um contexto Material por causa do `Material` widget
+// em seu próprio build, mas o erro original acontecia no Stack pai.
 // =================================================================================
 class _CallNotificationWidget extends StatefulWidget {
   final String callId;
@@ -143,7 +138,7 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
     ));
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1.5), // Começa um pouco mais de cima para um efeito melhor
+      begin: const Offset(0, -1.5),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _slideController,
@@ -153,7 +148,6 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
     _pulseController.repeat(reverse: true);
     _slideController.forward();
 
-    // Auto-dismiss after 30 seconds
     Future.delayed(const Duration(seconds: 30), () {
       if (mounted) {
         _rejectCall();
@@ -169,7 +163,6 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
   }
 
   void _acceptCall() async {
-    // Garante que o widget ainda está montado antes de usar o context.
     if (!mounted) return;
     
     final voipService = Provider.of<VoIPService>(context, listen: false);
@@ -187,13 +180,12 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
     }
 
     if (mounted) {
-      // Navega para a página de chamada
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => CallPage(
             contactId: widget.callerId,
             roomName: widget.roomName,
-            contactName: widget.callerName, // Passando o nome do contato
+            contactName: widget.callerName,
           ),
         ),
       );
@@ -211,7 +203,6 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
     } catch (e) {
       Logger.error('Error rejecting call: $e');
     } finally {
-      // Garante que o onDismiss seja chamado mesmo se houver erro.
       if (mounted) {
         widget.onDismiss();
       }
@@ -243,13 +234,12 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
             ],
           ),
           child: SafeArea(
-            bottom: false, // SafeArea apenas no topo
+            bottom: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header
                   Row(
                     children: [
                       const Icon(Icons.call, color: Colors.greenAccent, size: 20),
@@ -263,10 +253,8 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
                     ],
                   ),
                   const SizedBox(height: 20),
-                  // Caller info and controls
                   Row(
                     children: [
-                      // Avatar with pulse animation
                       AnimatedBuilder(
                         animation: _pulseAnimation,
                         builder: (context, child) {
@@ -281,7 +269,6 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
                         },
                       ),
                       const SizedBox(width: 16),
-                      // Caller name and info
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,10 +280,8 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
                           ],
                         ),
                       ),
-                      // Action buttons
                       Row(
                         children: [
-                          // Reject button
                           FloatingActionButton(
                             heroTag: 'reject_call',
                             onPressed: _rejectCall,
@@ -305,7 +290,6 @@ class _CallNotificationWidgetState extends State<_CallNotificationWidget>
                             child: const Icon(Icons.call_end, color: Colors.white),
                           ),
                           const SizedBox(width: 24),
-                          // Accept button
                           FloatingActionButton(
                             heroTag: 'accept_call',
                             onPressed: _acceptCall,
