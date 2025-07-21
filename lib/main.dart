@@ -6,7 +6,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
-import 'package.info_plus/package_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 // Import Screens
@@ -44,7 +44,6 @@ import 'services/clan_war_service.dart';
 //  IMPORTAÇÕES ADICIONADAS
 import 'services/stats_service.dart';
 import 'services/admin_service.dart';
-import 'services/permission_service.dart';
 import 'services/context_service.dart';
 import 'services/media_service.dart';
 import 'services/role_service.dart';
@@ -109,7 +108,6 @@ Future<void> main() async {
     },
     appRunner: () async {
       Logger.info("App Initialization Started.");
-
       try {
         await SystemChrome.setPreferredOrientations([
           DeviceOrientation.portraitUp,
@@ -199,11 +197,7 @@ class FEDERACAOMADApp extends StatelessWidget {
         Provider<AdminService>(
           create: (context) => AdminService(context.read<ApiService>()),
         ),
-        Provider<PermissionService>(
-          // Nota: O AuthProvider será passado para o PermissionService quando necessário,
-          // em vez de injetá-lo aqui para evitar dependências circulares.
-          create: (context) => PermissionService(authProvider: context.read<AuthProvider>()),
-        ),
+        // PermissionService removido temporariamente para resolver dependência circular
         Provider<ContextService>(
           create: (context) => ContextService(),
         ),
@@ -238,7 +232,7 @@ class FEDERACAOMADApp extends StatelessWidget {
           title: 'FEDERACAOMAD',
           debugShowCheckedModeBanner: false,
           theme: ThemeConstants.darkTheme,
-          home: IncomingCallManager(
+          home: IncomingCallOverlay( // Alterado de IncomingCallManager para IncomingCallOverlay
             child: Consumer<AuthProvider>(
               builder: (context, authProvider, _) {
                 if (authProvider.authStatus == AuthStatus.unknown) {
