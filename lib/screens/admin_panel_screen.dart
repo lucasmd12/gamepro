@@ -4,6 +4,7 @@ import 'package:lucasbeatsfederacao/screens/admin/admin_user_management.dart';
 import 'package:lucasbeatsfederacao/screens/admin/admin_organization_management.dart';
 import 'package:lucasbeatsfederacao/screens/admin/admin_reports_screen.dart';
 import 'package:lucasbeatsfederacao/screens/admin/admin_system_settings.dart';
+import 'package:lucasbeatsfederacao/screens/home_screen.dart'; // Import da HomeScreen
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -34,8 +35,21 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Painel Administrativo'),
+        // O botão de voltar será tratado automaticamente pelo Navigator
       ),
       body: _adminScreens[_selectedIndex],
+      // 👇 BOTÃO ADICIONADO PARA NAVEGAR PARA A EXPERIÊNCIA COMUM
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Navega para a HomeScreen
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        },
+        icon: const Icon(Icons.explore),
+        label: const Text('Modo Usuário'),
+        tooltip: 'Navegar pelo aplicativo como usuário',
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -69,5 +83,3 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     );
   }
 }
-
-
