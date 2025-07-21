@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/models/clan_model.dart';
-import 'package:lucasbeatsfederacao/screens/tabs/members_tab.dart'; // Import MembersTab
-import 'package:lucasbeatsfederacao/screens/tabs/settings_tab.dart'; // Import SettingsTab
+import 'package:lucasbeatsfederacao/screens/tabs/members_tab.dart';
+import 'package:lucasbeatsfederacao/screens/tabs/settings_tab.dart';
 import 'package:lucasbeatsfederacao/services/clan_service.dart';
+import 'package:lucasbeatsfederacao/services/permission_service.dart'; //  IMPORT ADICIONADO
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
-import 'package:lucasbeatsfederacao/models/role_model.dart';
 
 class ClanDetailScreen extends StatefulWidget {
   final Clan clan;
@@ -24,12 +24,11 @@ class _ClanDetailScreenState extends State<ClanDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadClans();
-  }
-
-  bool _isAdmMaster() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    return authProvider.currentUser?.role == Role.admMaster;
+    // Apenas carrega a lista de clãs se for necessário para a declaração de guerra
+    final permissionService = Provider.of<PermissionService>(context, listen: false);
+    if (permissionService.canDeclareWar(widget.clan)) {
+      _loadClans();
+    }
   }
 
   Future<void> _loadClans() async {
@@ -67,31 +66,33 @@ class _ClanDetailScreenState extends State<ClanDetailScreen> {
     String? targetClanId;
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) { // Usar dialogContext para evitar conflito
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: Text("Declarar Guerra de ${widget.clan.name}"),
-          content: DropdownButtonFormField<String?>(
-            value: targetClanId,
-            decoration: const InputDecoration(
-              labelText: "Selecione o Clã Alvo",
-              border: OutlineInputBorder(),
-            ),
-            items: [
-              const DropdownMenuItem<String?>(
-                value: null,
-                child: Text("Selecione um Clã"),
-              ),
-              ..._clans.where((clan) => clan.id != widget.clan.id).map((clan) {
-                return DropdownMenuItem<String?>(
-                  value: clan.id,
-                  child: Text(clan.name),
-                );
-              }).toList(),
-            ],
-            onChanged: (val) {
-              targetClanId = val;
-            },
-          ),
+          content: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : DropdownButtonFormField<String?>(
+                  value: targetClanId,
+                  decoration: const InputDecoration(
+                    labelText: "Selecione o Clã Alvo",
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text("Selecione um Clã"),
+                    ),
+                    ..._clans.where((clan) => clan.id != widget.clan.id).map((clan) {
+                      return DropdownMenuItem<String?>(
+                        value: clan.id,
+                        child: Text(clan.name),
+                      );
+                    }).toList(),
+                  ],
+                  onChanged: (val) {
+                    targetClanId = val;
+                  },
+                ),
           actions: <Widget>[
             TextButton(
               child: const Text("Cancelar"),
@@ -113,18 +114,17 @@ class _ClanDetailScreenState extends State<ClanDetailScreen> {
                 }
                 Navigator.of(dialogContext).pop();
                 try {
-                  final clanService = Provider.of<ClanService>(dialogContext, listen: false);
+                  final clanService = Provider.of<ClanService>(context, listen: false);
                   final clanWar = await clanService.declareWar(widget.clan.id, targetClanId!);
                   if (clanWar != null) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Guerra declarada com sucesso!"),
                         backgroundColor: Colors.green,
                       ),
                     );
-                    // Opcional: Atualizar a lista de guerras ou navegar para a tela de guerras
                   } else {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Falha ao declarar guerra."),
                         backgroundColor: Colors.red,
@@ -133,7 +133,7 @@ class _ClanDetailScreenState extends State<ClanDetailScreen> {
                   }
                 } catch (e, s) {
                   Logger.error("Erro ao declarar guerra:", error: e, stackTrace: s);
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text("Erro ao declarar guerra: ${e.toString()}"),
                       backgroundColor: Colors.red,
@@ -150,34 +150,64 @@ class _ClanDetailScreenState extends State<ClanDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController( // Mover DefaultTabController para fora do Scaffold
-      length: 2, // Número de tabs
-      child: Scaffold( // Scaffold agora é filho do DefaultTabController
-        appBar: AppBar( 
-          title: Text(widget.clan.name), // Título com o nome do clã
+    //  Obtém os serviços necessários do Provider
+    final permissionService = Provider.of<PermissionService>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    // Verifica se o usuário tem permissão para gerenciar o clã
+    final bool canManage = permissionService.canManageClan(widget.clan);
+    final bool canDeclareWar = permissionService.canDeclareWar(widget.clan);
+
+    // Define as abas com base na permissão
+    final List<Widget> tabs = [
+      const Tab(text: 'Membros'),
+      if (canManage) const Tab(text: 'Configurações'), //  Aba condicional
+    ];
+
+    final List<Widget> tabViews = [
+      MembersTab(clanId: widget.clan.id, clan: widget.clan),
+      if (canManage) SettingsTab(clanId: widget.clan.id), //  View da aba condicional
+    ];
+
+    return DefaultTabController(
+      length: tabs.length, // O tamanho agora é dinâmico
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.clan.name),
           actions: [
-            if (_isAdmMaster()) // Show declare war button only for ADM_MASTER
+            //  Botão condicional para declarar guerra
+            if (canDeclareWar)
               IconButton(
                 icon: const Icon(Icons.gavel),
                 onPressed: _showDeclareWarDialog,
                 tooltip: 'Declarar Guerra',
               ),
+            //  Poderíamos adicionar um menu com mais ações de gerenciamento aqui
+            if (canManage)
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  // Lógica para cada ação do menu
+                  if (value == 'edit') {
+                    // Navegar para a tela de edição do clã
+                  }
+                },
+                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  const PopupMenuItem<String>(
+                    value: 'edit',
+                    child: Text('Editar Detalhes'),
+                  ),
+                  // Adicionar mais opções aqui
+                ],
+              ),
           ],
-          bottom: const TabBar( // TabBar continua no bottom do AppBar
-            tabs: [
-              Tab(text: 'Membros'),
-              Tab(text: 'Configurações'),
-            ],
+          bottom: TabBar(
+            tabs: tabs, // Usa a lista de abas dinâmica
           ),
         ),
-        body: TabBarView( // TabBarView continua no body
-          children: [
-            MembersTab(clanId: widget.clan.id, clan: widget.clan), // Apenas uma instância, passando o clan
-            SettingsTab(clanId: widget.clan.id), // Passa o clanId para SettingsTab
-          ],
+        body: TabBarView(
+          children: tabViews, // Usa a lista de views dinâmica
         ),
       ),
     );
   }
 }
-
