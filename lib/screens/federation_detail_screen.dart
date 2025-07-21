@@ -4,7 +4,6 @@ import 'package:lucasbeatsfederacao/models/federation_model.dart';
 import 'package:lucasbeatsfederacao/services/permission_service.dart'; // IMPORT ADICIONADO
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/screens/clan_list_screen.dart';
-import 'package:lucasbeatsfederacao/screens/clan_detail_screen.dart';
 import 'package:lucasbeatsfederacao/screens/federation_text_chat_screen.dart';
 import 'package:lucasbeatsfederacao/screens/admin_manage_clans_screen.dart';
 

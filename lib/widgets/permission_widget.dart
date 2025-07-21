@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:lucasbeatsfederacao/services/auth_service.dart';
+import 'package:lucasbeatsfederacao/providers/auth_provider.dart'; // Importar AuthProvider
 import 'package:lucasbeatsfederacao/services/permission_service.dart';
 import 'package:lucasbeatsfederacao/models/user_model.dart';
 import 'package:lucasbeatsfederacao/models/role_model.dart';
+import 'package:lucasbeatsfederacao/models/clan_model.dart'; // Importar Clan
+import 'package:lucasbeatsfederacao/models/federation_model.dart'; // Importar Federation
+
 
 class PermissionWidget extends StatelessWidget {
   final String requiredAction;
@@ -13,6 +16,10 @@ class PermissionWidget extends StatelessWidget {
   final String? federationId;
   final String? creatorId;
   final String? roomType;
+  // Adicionar parâmetros opcionais para Clan e Federation
+  final Clan? clan;
+  final Federation? federation;
+
 
   const PermissionWidget({
     super.key,
@@ -23,104 +30,124 @@ class PermissionWidget extends StatelessWidget {
     this.federationId,
     this.creatorId,
     this.roomType,
+    this.clan,
+    this.federation,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthService>(
-      builder: (context, authService, _) {
-        final user = authService.currentUser;
-        if (user == null) {
-          return fallback ?? const SizedBox.shrink();
+    // Usar o AuthProvider para obter o usuário
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.currentUser;
+
+    if (user == null) {
+      return fallback ?? const SizedBox.shrink();
+    }
+
+    // Criar uma instância do PermissionService
+    final permissionService = PermissionService(authProvider: authProvider);
+
+    bool hasPermission = false;
+
+    // Verificar permissões específicas baseadas na ação
+    switch (requiredAction) {
+      case 'create_clan_voice_room':
+        hasPermission = permissionService.canCreateVoiceRoom(); // Sem parâmetro user e tipo de sala, se a lógica estiver no service
+        break;
+      case 'create_federation_voice_room':
+        hasPermission = permissionService.canCreateVoiceRoom(); // Sem parâmetro user e tipo de sala, se a lógica estiver no service
+        break;
+      case 'create_global_voice_room':
+        hasPermission = permissionService.canCreateVoiceRoom(); // Sem parâmetro user e tipo de sala, se a lógica estiver no service
+        break;
+      case 'create_admin_voice_room':
+        hasPermission = permissionService.canCreateVoiceRoom(); // Sem parâmetro user e tipo de sala, se a lógica estiver no service
+        break;
+      case 'join_clan_voice_room':
+        hasPermission = permissionService.canJoinVoiceRoom(); // Sem parâmetro user e detalhes da sala, se a lógica estiver no service
+        break;
+      case 'join_federation_voice_room':
+        hasPermission = permissionService.canJoinVoiceRoom(); // Sem parâmetro user e detalhes da sala, se a lógica estiver no service
+        break;
+      case 'join_global_voice_room':
+        hasPermission = permissionService.canJoinVoiceRoom(); // Sem parâmetro user e detalhes da sala, se a lógica estiver no service
+        break;
+      case 'join_admin_voice_room':
+        hasPermission = permissionService.canJoinVoiceRoom(); // Sem parâmetro user e detalhes da sala, se a lógica estiver no service
+        break;
+      case 'send_clan_message':
+        hasPermission = permissionService.canSendMessage(); // Sem parâmetro user e detalhes da sala, se a lógica estiver no service
+        break;
+      case 'send_federation_message':
+        hasPermission = permissionService.canSendMessage(); // Sem parâmetro user e detalhes da sala, se a lógica estiver no service
+        break;
+      case 'send_global_message':
+        hasPermission = permissionService.canSendMessage(); // Sem parâmetro user e detalhes da sala, se a lógica estiver no service
+        break;
+      case 'manage_clan':
+        // Passar o objeto Clan, se disponível
+        if (clan != null) {
+           hasPermission = permissionService.canManageClan(clan!);
+        } else {
+           // Lidar com o caso onde clan não é fornecido, se necessário
+           // Dependendo da sua lógica, talvez devesse ser false ou lançar um erro.
+           // Por agora, manter como false se o objeto clan não estiver disponível.
+           hasPermission = false;
         }
-
-        bool hasPermission = false;
-
-        // Verificar permissões específicas baseadas na ação
-        switch (requiredAction) {
-          case 'create_clan_voice_room':
-            hasPermission = PermissionService.canCreateVoiceRoom(user, 'clan');
-            break;
-          case 'create_federation_voice_room':
-            hasPermission = PermissionService.canCreateVoiceRoom(user, 'federation');
-            break;
-          case 'create_global_voice_room':
-            hasPermission = PermissionService.canCreateVoiceRoom(user, 'global');
-            break;
-          case 'create_admin_voice_room':
-            hasPermission = PermissionService.canCreateVoiceRoom(user, 'admin');
-            break;
-          case 'join_clan_voice_room':
-            hasPermission = PermissionService.canJoinVoiceRoom(user, 'clan', clanId: clanId);
-            break;
-          case 'join_federation_voice_room':
-            hasPermission = PermissionService.canJoinVoiceRoom(user, 'federation', federationId: federationId);
-            break;
-          case 'join_global_voice_room':
-            hasPermission = PermissionService.canJoinVoiceRoom(user, 'global');
-            break;
-          case 'join_admin_voice_room':
-            hasPermission = PermissionService.canJoinVoiceRoom(user, 'admin');
-            break;
-          case 'send_clan_message':
-            hasPermission = PermissionService.canSendMessage(user, 'clan', clanId: clanId);
-            break;
-          case 'send_federation_message':
-            hasPermission = PermissionService.canSendMessage(user, 'federation', federationId: federationId);
-            break;
-          case 'send_global_message':
-            hasPermission = PermissionService.canSendMessage(user, 'global');
-            break;
-          case 'manage_clan':
-            hasPermission = PermissionService.canManageClan(user, clanId);
-            break;
-          case 'manage_federation':
-            hasPermission = PermissionService.canManageFederation(user, federationId);
-            break;
-          case 'access_admin_panel':
-            hasPermission = PermissionService.canAccessAdminPanel(user);
-            break;
-          case 'create_clan':
-            hasPermission = PermissionService.canCreateClan(user);
-            break;
-          case 'create_federation':
-            hasPermission = PermissionService.canCreateFederation(user);
-            break;
-          case 'invite_to_clan':
-            hasPermission = PermissionService.canInviteToClan(user, clanId);
-            break;
-          case 'view_global_stats':
-            hasPermission = PermissionService.canViewGlobalStats(user);
-            break;
-          case 'moderate_clan_chat':
-            hasPermission = PermissionService.canModerateChat(user, 'clan', clanId: clanId);
-            break;
-          case 'moderate_federation_chat':
-            hasPermission = PermissionService.canModerateChat(user, 'federation', federationId: federationId);
-            break;
-          case 'moderate_global_chat':
-            hasPermission = PermissionService.canModerateChat(user, 'global');
-            break;
-          case 'end_voice_room':
-            if (roomType != null && creatorId != null) {
-              hasPermission = PermissionService.canEndOthersVoiceRoom(
-                user, 
-                roomType!, 
-                creatorId!, 
-                clanId: clanId, 
-                federationId: federationId
-              );
-            }
-            break;
-          default:
-            // Usar verificação genérica de ações
-            hasPermission = PermissionService.hasAction(user, requiredAction);
-            break;
+        break;
+      case 'manage_federation':
+        // Passar o objeto Federation, se disponível
+        if (federation != null) {
+           hasPermission = permissionService.canManageFederation(federation!);
+        } else {
+           // Lidar com o caso onde federation não é fornecido, se necessário
+           hasPermission = false;
         }
+        break;
+      case 'access_admin_panel':
+        hasPermission = permissionService.canAccessAdminPanel();
+        break;
+      case 'create_clan':
+        hasPermission = permissionService.canCreateClan();
+        break;
+      case 'create_federation':
+        hasPermission = permissionService.canCreateFederation();
+        break;
+      case 'invite_to_clan':
+         // Assumindo que canInviteToClan precise do clan
+         if (clan != null) {
+            hasPermission = permissionService.canInviteToClan(clan!);
+         } else {
+            hasPermission = false;
+         }
+        break;
+      case 'view_global_stats':
+        hasPermission = permissionService.canViewGlobalStats();
+        break;
+      case 'moderate_clan_chat':
+        hasPermission = permissionService.canModerateChat(); // Sem parâmetros de tipo ou ID, se a lógica estiver no service
+        break;
+      case 'moderate_federation_chat':
+        hasPermission = permissionService.canModerateChat(); // Sem parâmetros de tipo ou ID, se a lógica estiver no service
+        break;
+      case 'moderate_global_chat':
+        hasPermission = permissionService.canModerateChat(); // Sem parâmetros de tipo ou ID, se a lógica estiver no service
+        break;
+      case 'end_voice_room':
+        // Assumindo que canEndOthersVoiceRoom precise do creatorId, clanId e federationId
+        if (creatorId != null) { // roomType não é mais necessário como parâmetro se a lógica estiver no service
+             hasPermission = permissionService.canEndOthersVoiceRoom(); // Sem parâmetros de tipo ou ID, se a lógica estiver no service
+        } else {
+             hasPermission = false;
+        }
+        break;
+      default:
+        // Usar verificação genérica de ações
+        hasPermission = permissionService.hasAction(requiredAction);
+        break;
+    }
 
-        return hasPermission ? child : (fallback ?? const SizedBox.shrink());
-      },
-    );
+    return hasPermission ? child : (fallback ?? const SizedBox.shrink());
   }
 }
 
@@ -141,9 +168,9 @@ class RoleBasedWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthService>(
-      builder: (context, authService, _) {
-        final user = authService.currentUser;
+    return Consumer<AuthProvider>( // Mudar para AuthProvider
+      builder: (context, authProvider, _) {
+        final user = authProvider.currentUser;
         if (user == null) {
           return fallback ?? const SizedBox.shrink();
         }
@@ -241,5 +268,3 @@ class RoleBadge extends StatelessWidget {
     );
   }
 }
-
-
