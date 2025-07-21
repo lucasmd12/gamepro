@@ -15,10 +15,6 @@ class PermissionService {
   /// Getter privado para acessar de forma segura o usuário logado.
   User? get _currentUser => _authProvider.currentUser;
 
-  // ===================================================================
-  // MÉTODOS EXISTENTES (JÁ ESTAVAM CORRETOS)
-  // ===================================================================
-
   /// Verifica se o usuário pode gerenciar um clã específico (editar, etc.).
   bool canManageClan(Clan clan) {
     final user = _currentUser;
@@ -49,16 +45,10 @@ class PermissionService {
     return user.role == Role.admMaster || (user.clanRole == Role.leader && user.clanId == fromClan.id);
   }
 
-  // ===================================================================
-  // NOVOS MÉTODOS (ADICIONADOS PARA CORRIGIR OS ERROS)
-  // A LÓGICA INTERNA É UM EXEMPLO E PRECISA SER AJUSTADA.
-  // ===================================================================
-
   /// Verifica se o usuário pode criar um clã.
   bool canCreateClan() {
     final user = _currentUser;
     if (user == null) return false;
-    // Exemplo: Apenas ADM_MASTER ou líderes de federação podem criar clãs.
     return user.role == Role.admMaster || user.federationRole == Role.leader;
   }
 
@@ -66,7 +56,6 @@ class PermissionService {
   bool canCreateFederation() {
     final user = _currentUser;
     if (user == null) return false;
-    // Exemplo: Apenas ADM_MASTER pode criar federações.
     return user.role == Role.admMaster;
   }
 
@@ -74,17 +63,21 @@ class PermissionService {
   bool canInviteToClan(Clan clan) {
     final user = _currentUser;
     if (user == null) return false;
-    // Exemplo: ADM_MASTER, Líderes ou Oficiais do clã podem convidar.
+    
+    // ADM Master sempre pode.
     if (user.role == Role.admMaster) return true;
+    
+    // Usuário deve pertencer ao clã para convidar.
     if (user.clanId != clan.id) return false;
-    return user.clanRole == Role.leader || user.clanRole == Role.officer;
+    
+    // CORREÇÃO APLICADA: Agora verifica por Líder ou Sublíder.
+    return user.clanRole == Role.leader || user.clanRole == Role.sublider;
   }
 
   /// Verifica se o usuário pode moderar o chat.
   bool canModerateChat() {
     final user = _currentUser;
     if (user == null) return false;
-    // Exemplo: Apenas ADM_MASTER pode moderar.
     return user.role == Role.admMaster;
   }
 
@@ -92,7 +85,6 @@ class PermissionService {
   bool canViewGlobalStats() {
     final user = _currentUser;
     if (user == null) return false;
-    // Exemplo: Todos podem ver estatísticas globais. Mude se necessário.
     return true;
   }
 
@@ -100,7 +92,6 @@ class PermissionService {
   bool canCreateVoiceRoom() {
     final user = _currentUser;
     if (user == null) return false;
-    // Exemplo: Todos os usuários logados podem criar salas de voz.
     return true;
   }
 
@@ -108,7 +99,6 @@ class PermissionService {
   bool canJoinVoiceRoom() {
     final user = _currentUser;
     if (user == null) return false;
-    // Exemplo: Todos os usuários logados podem entrar em salas de voz.
     return true;
   }
 
@@ -116,7 +106,6 @@ class PermissionService {
   bool canEndOthersVoiceRoom() {
     final user = _currentUser;
     if (user == null) return false;
-    // Exemplo: Apenas ADM_MASTER pode.
     return user.role == Role.admMaster;
   }
 
@@ -124,7 +113,6 @@ class PermissionService {
   bool canSendMessage() {
     final user = _currentUser;
     if (user == null) return false;
-    // Exemplo: Todos os usuários logados podem enviar mensagens.
     return true;
   }
   
@@ -133,7 +121,6 @@ class PermissionService {
       final user = _currentUser;
       if (user == null) return false;
       // Exemplo: Apenas ADM_MASTER tem ações genéricas.
-      // Você pode expandir isso com um switch(actionName) para mais ações.
       return user.role == Role.admMaster;
   }
 }
