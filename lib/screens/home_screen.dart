@@ -16,6 +16,7 @@ import 'package:lucasbeatsfederacao/screens/instaclan_feed_screen.dart';
 import 'package:lucasbeatsfederacao/screens/clan_wars_list_screen.dart';
 import 'package:lucasbeatsfederacao/screens/federation_management_screen.dart';
 import 'package:lucasbeatsfederacao/screens/qrr_list_screen.dart';
+import 'package:lucasbeatsfederacao/screens/admin_panel_screen.dart'; // Import do AdminPanelScreen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,8 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _widgetOptions = <Widget>[
           const HomeTab(),
           const FederationExplorerScreen(),
-          // CORREÇÃO APLICADA AQUI:
-          // Usamos o operador '??' para fornecer uma string vazia se federationId for nulo.
           FederationManagementScreen(federationId: currentUser?.federationId ?? ''),
           const ContextualChatScreen(chatContext: 'global'),
           const ContextualVoiceScreen(voiceContext: 'global'),
@@ -77,53 +76,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     Logger.info("Requesting necessary permissions...");
     try {
-      final notificationSpan = transaction.startChild(
-        'requestNotificationPermission',
-        description: 'Requesting notification permission',
-      );
-      PermissionStatus notificationStatus = await Permission.notification.request();
-      notificationSpan.finish(status: SpanStatus.ok());
-
-      if (notificationStatus.isGranted) {
-        Logger.info("Notification permission granted.");
-      } else if (notificationStatus.isDenied) {
-        Logger.warning("Notification permission denied.");
-      } else if (notificationStatus.isPermanentlyDenied) {
-        Logger.error("Notification permission permanently denied.");
-        _showSettingsDialog("Notificações");
-      }
-
-      final storageSpan = transaction.startChild(
-        'requestStoragePermission',
-        description: 'Requesting storage permission',
-      );
-      PermissionStatus storageStatus = await Permission.storage.request();
-      storageSpan.finish(status: SpanStatus.ok());
-
-      if (storageStatus.isGranted) {
-        Logger.info("Storage permission granted.");
-      } else if (storageStatus.isDenied) {
-        Logger.warning("Storage permission denied.");
-      } else if (storageStatus.isPermanentlyDenied) {
-        Logger.error("Storage permission permanently denied.");
-        _showSettingsDialog("Armazenamento");
-      }
-
-      final microphoneSpan = transaction.startChild(
-        'requestMicrophonePermission',
-        description: 'Requesting microphone permission',
-      );
-      PermissionStatus microphoneStatus = await Permission.microphone.request();
-      microphoneSpan.finish(status: SpanStatus.ok());
-
-      if (microphoneStatus.isGranted) {
-        Logger.info("Microphone permission granted.");
-      } else if (microphoneStatus.isDenied) {
-        Logger.warning("Microphone permission denied.");
-      } else if (microphoneStatus.isPermanentlyDenied) {
-        Logger.error("Microphone permission permanently denied.");
-        _showSettingsDialog("Microfone");
-      }
+      await Permission.notification.request();
+      await Permission.storage.request();
+      await Permission.microphone.request();
       transaction.finish(status: SpanStatus.ok());
     } catch (e, stackTrace) {
       transaction.finish(status: SpanStatus.internalError());
@@ -252,6 +207,23 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
         actions: [
+           // 👇 BOTÃO CONDICIONAL PARA VOLTAR AO PAINEL ADM
+           if (currentUser.role == Role.admMaster)
+            IconButton(
+              icon: const Icon(Icons.dashboard_customize),
+              tooltip: 'Painel Administrativo',
+              onPressed: () {
+                // Verifica se a tela atual é a raiz da navegação.
+                // Se sim, usa push. Se não, usa pop para voltar.
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                } else {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => const AdminPanelScreen()),
+                  );
+                }
+              },
+            ),
            IconButton(
             icon: const Icon(Icons.notifications_none),
             tooltip: 'Notificações',
@@ -269,10 +241,9 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context, snapshot) {
               final playerState = snapshot.data;
               final processingState = playerState?.processingState;
-              final playing = playerState?.playing;
               if (processingState == ProcessingState.loading || processingState == ProcessingState.buffering || !(_audioPlayer.playing)) {
                 return const Icon(Icons.play_arrow);
-              } else if (playing != true) {
+              } else if (playerState?.playing != true) {
                 return const Icon(Icons.play_arrow);
               } else {
                 return const Icon(Icons.pause);
