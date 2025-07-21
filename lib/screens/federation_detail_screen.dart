@@ -1,13 +1,125 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/models/federation_model.dart';
+import 'package:lucasbeatsfederacao/services/permission_service.dart'; // IMPORT ADICIONADO
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/screens/clan_list_screen.dart';
 import 'package:lucasbeatsfederacao/screens/clan_detail_screen.dart';
 import 'package:lucasbeatsfederacao/screens/federation_text_chat_screen.dart';
-import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
-import 'package:lucasbeatsfederacao/models/role_model.dart';
-import 'package:lucasbeatsfederacao/screens/admin_manage_clans_screen.dart'; // Import AdminManageClansScreen
+import 'package:lucasbeatsfederacao/screens/admin_manage_clans_screen.dart';
+
+// Uma nova aba para os detalhes da federação, para manter a UI limpa
+class FederationDetailsTab extends StatelessWidget {
+  final Federation federation;
+  const FederationDetailsTab({super.key, required this.federation});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (federation.banner != null && federation.banner!.isNotEmpty)
+            Image.network(
+              federation.banner!,
+              width: double.infinity,
+              height: 200,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.broken_image, size: 100),
+            ),
+          const SizedBox(height: 16),
+          Text(
+            'Líder: ${federation.leader.username}',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            federation.description ?? 'Nenhuma descrição disponível.',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Regras:',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            federation.rules ?? 'Nenhuma regra definida.',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.chat),
+              onPressed: () {
+                Logger.info(
+                    "Botão Chat da Federação pressionado para federação ${federation.name}");
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => FederationTextChatScreen(
+                      federationId: federation.id,
+                      federationName: federation.name,
+                    ),
+                  ),
+                );
+              },
+              label: const Text("Entrar no Chat da Federação"),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Uma nova aba para as configurações da federação, visível apenas para quem tem permissão
+class FederationSettingsTab extends StatelessWidget {
+  final Federation federation;
+  const FederationSettingsTab({super.key, required this.federation});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('Editar Detalhes da Federação'),
+            onTap: () {
+              // TODO: Navegar para a tela de edição da federação
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.shield),
+            title: const Text('Gerenciar Clãs'),
+            subtitle: const Text('Adicionar ou remover clãs da federação'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => AdminManageClansScreen(
+                    federationId: federation.id,
+                  ),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.handshake),
+            title: const Text('Gerenciar Diplomacia'),
+            subtitle: const Text('Definir aliados e inimigos'),
+            onTap: () {
+              // TODO: Navegar para a tela de gerenciamento de diplomacia
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
 class FederationDetailScreen extends StatefulWidget {
   final Federation federation;
@@ -20,198 +132,51 @@ class FederationDetailScreen extends StatefulWidget {
 
 class _FederationDetailScreenState extends State<FederationDetailScreen> {
   @override
-  void initState() {
-    super.initState();
-    // Fetch current user in initState
-  }
-
-  @override
-  void dispose() {
-    // Dispose any controllers if added later
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // Get AuthProvider for conditional visibility
-    final authProvider = Provider.of<AuthProvider>(context);
-    final currentUser = authProvider.currentUser;
+    // Obtém o PermissionService
+    final permissionService = Provider.of<PermissionService>(context);
 
-    // Determine if the current user is the federation leader or ADM
-    bool isFederationLeaderOrAdm = currentUser != null &&
-        (currentUser.id == widget.federation.leader.id ||
-            currentUser.role == Role.admMaster);
+    // Verifica se o usuário pode gerenciar a federação
+    final bool canManage = permissionService.canManageFederation(widget.federation);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.federation.name ?? 'Federação sem nome'),
-        actions: [
-          if (widget.federation.tag != null && widget.federation.tag!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Center(
-                  child: Text('[${widget.federation.tag!}]',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold))),
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (widget.federation.banner != null && widget.federation.banner!.isNotEmpty)
-              Image.network(
-                widget.federation.banner!,
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.broken_image,
-                    size: 100),
-              ),
-            const SizedBox(height: 16),
-            Text(
-              'Líder: ${widget.federation.leader.username}',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.federation.description ?? 'Nenhuma descrição disponível.',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Regras:',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.federation.rules ?? 'Nenhuma regra definida.',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Logger.info(
-                    "Botão Ver Clãs pressionado para federação ${widget.federation.name}");
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        ClanListScreen(federationId: widget.federation.id),
+    // Define as abas com base na permissão
+    final List<Widget> tabs = [
+      const Tab(text: 'Detalhes'),
+      const Tab(text: 'Clãs'),
+      if (canManage) const Tab(text: 'Gerenciamento'), // Aba condicional
+    ];
+
+    final List<Widget> tabViews = [
+      FederationDetailsTab(federation: widget.federation),
+      ClanListScreen(federationId: widget.federation.id), // Reutiliza a ClanListScreen como uma aba
+      if (canManage) FederationSettingsTab(federation: widget.federation), // View da aba condicional
+    ];
+
+    return DefaultTabController(
+      length: tabs.length, // O tamanho agora é dinâmico
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.federation.name),
+          actions: [
+            if (widget.federation.tag != null && widget.federation.tag!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Center(
+                  child: Text(
+                    '[${widget.federation.tag!}]',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                );
-              },
-              child: const Text("Ver Clãs desta Federação"),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                Logger.info(
-                    "Botão Chat da Federação pressionado para federação ${widget.federation.name}");
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => FederationTextChatScreen(
-                      federationId: widget.federation.id,
-                      federationName: widget.federation.name,
-                    ),
-                  ),
-                );
-              },
-              child: const Text("Chat da Federação"),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "Clãs na Federação:",
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            if (widget.federation.clans.isEmpty)
-              const Text('Nenhum clã nesta federação ainda.')
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.federation.clans.length,
-                itemBuilder: (context, index) {
-                  final clan = widget.federation.clans[index];
-                  return ListTile(
-                    title: Text(clan.name ?? 'Clã sem nome'),
-                    subtitle: Text('Tag: ${clan.tag ?? 'N/A'}'),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => ClanDetailScreen(
-                              clan: clan.toClan(
-                                  leaderId: widget.federation.leader.id)),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            const SizedBox(height: 16),
-            Text(
-              'Aliados:',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            if (widget.federation.allies.isEmpty)
-              const Text('Nenhum aliado definido.')
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.federation.allies.length,
-                itemBuilder: (context, index) {
-                  final ally = widget.federation.allies[index];
-                  return ListTile(
-                    title: Text(ally.name ?? 'Aliado sem nome'),
-                  );
-                },
-              ),
-            const SizedBox(height: 16),
-            Text(
-              'Inimigos:',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            if (widget.federation.enemies.isEmpty)
-              const Text('Nenhum inimigo definido.')
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.federation.enemies.length,
-                itemBuilder: (context, index) {
-                  final enemy = widget.federation.enemies[index];
-                  return ListTile(
-                    title: Text(enemy.name ?? 'Inimigo sem nome'),
-                  );
-                },
+                ),
               ),
           ],
+          bottom: TabBar(
+            tabs: tabs, // Usa a lista de abas dinâmica
+          ),
+        ),
+        body: TabBarView(
+          children: tabViews, // Usa a lista de views dinâmica
         ),
       ),
-      floatingActionButton: isFederationLeaderOrAdm
-          ? FloatingActionButton(
-              onPressed: () {
-                Logger.info(
-                    'Botão Criar Clã pressionado para federação ${widget.federation.name}');
-                // Navigate to AdminManageClansScreen, passing the current federation ID
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => AdminManageClansScreen(
-                      federationId: widget.federation.id,
-                    ),
-                  ),
-                );
-              },
-              tooltip: 'Criar Novo Clã nesta Federação',
-              child: const Icon(Icons.add),
-            )
-          : null, // Hide FAB for users who are not the leader or ADM
     );
   }
 }
