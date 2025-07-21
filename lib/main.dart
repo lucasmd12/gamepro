@@ -202,7 +202,7 @@ class FEDERACAOMADApp extends StatelessWidget {
         Provider<PermissionService>(
           // Nota: O AuthProvider será passado para o PermissionService quando necessário,
           // em vez de injetá-lo aqui para evitar dependências circulares.
-          create: (context) => PermissionService(),
+          create: (context) => PermissionService(authProvider: context.read<AuthProvider>()),
         ),
         Provider<ContextService>(
           create: (context) => ContextService(),
