@@ -71,7 +71,7 @@ class PermissionService {
     if (user.clanId != clan.id) return false;
     
     // CORREÇÃO APLICADA: Agora verifica por Líder ou Sublíder.
-    return user.clanRole == Role.leader || user.clanRole == Role.sublider;
+    return user.clanRole == Role.leader || user.clanRole == Role.subLeader;
   }
 
   /// Verifica se o usuário pode moderar o chat.
