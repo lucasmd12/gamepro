@@ -121,7 +121,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
       // TODO: Consider filtering clans if federationId is provided and user is not ADM_MASTER for better performance
       final clans = await _clanService.getAllClans();
       if (mounted) {
-        // Filter out any potential nulls and ensure it\'s a List<Clan>
+        // Filter out any potential nulls and ensure it's a List<Clan>
         setState(() {
           _clans = clans.whereType<Clan>().toList();
         });
@@ -255,7 +255,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                     iconDisabledColor: Colors.grey,
                     autovalidateMode: AutovalidateMode.disabled,
                     // Add explicit disabled property for clarity
-                    disabledHint: disableFederationSelection ? Text(_availableFederations.first.name ?? "Federação sem nome") : null,
+                    disabledHint: disableFederationSelection ? Text(_availableFederations.first.name) : null,
                   ),
               ],
             ),
@@ -332,9 +332,9 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
   }
 
   void _showEditClanDialog(Clan clan) {
-    _editClanNameController.text = clan.name; // Assuming name is never null based on model
+    _editClanNameController.text = clan.name;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUser = authProvider.currentUser; // currentUser pode ser nulo aqui antes do check de permissão
+    final currentUser = authProvider.currentUser;
     // Permission check for editing: ADM_MASTER or the leader of THIS specific clan
     final bool canEdit = currentUser?.role == Role.admMaster || (currentUser?.id != null && currentUser?.id == clan.leaderId);
 
@@ -387,7 +387,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                 try {
                   final updatedClan = await _clanService.updateClanDetails(clan.id, name: newName);
                   if (updatedClan != null) {
-                    _showSnackBar("Clan \"${updatedClan.name}\\\" updated successfully!");
+                    _showSnackBar("Clan \"${updatedClan.name}\" updated successfully!");
                     _loadClans(); // Refresh the list
                   } else {
                     _showSnackBar("Failed to update clan.", isError: true);
@@ -438,7 +438,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                   final success = await _clanService.transferClanLeadership(clan.id, newLeaderUsernameOrId);
 
                   if (success) {
-                    _showSnackBar("Liderança do clã \"${clan.name}\\\" transferida com sucesso!");
+                    _showSnackBar("Liderança do clã \"${clan.name}\" transferida com sucesso!");
                     // Opcional: Recarregar a lista de clãs para refletir a mudança de líder
                     _loadClans();
                   } else {
@@ -486,7 +486,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
       builder: (BuildContext dialogContext) { // Usar dialogContext
         return AlertDialog(
           title: const Text("Confirmar Exclusão"),
-          content: Text("Tem certeza que deseja excluir o clã \"${clan.name}\"?"), // Assuming name is not null
+          content: Text("Tem certeza que deseja excluir o clã \"${clan.name}\"?"),
           actions: <Widget>[
             TextButton(
               child: const Text("Cancelar"),
@@ -520,17 +520,30 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
     );
   }
 
-  // Helper to check edit permission for a given clan
+  // =================================================================================
+  // [CORRIGIDO] A função _canEditClan agora cria uma instância do PermissionService.
+  // =================================================================================
   bool _canEditClan(Clan clan) {
-     if (_currentUser == null) return false;
- return PermissionService.canManageClan(_currentUser!, clan.id);
+    if (_currentUser == null) return false;
+
+    // 1. Obtenha o AuthProvider a partir do context.
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // 2. Crie uma instância do PermissionService, passando o AuthProvider.
+    final permissionService = PermissionService(authProvider: authProvider);
+
+    // 3. Chame o método na INSTÂNCIA do serviço.
+    // O método canManageClan provavelmente não precisa mais do _currentUser como parâmetro,
+    // pois o serviço já o tem através do AuthProvider. Verifique a definição do método.
+    // Assumindo que a assinatura agora é `canManageClan(String clanId)`.
+    return permissionService.canManageClan(clan.id);
   }
 
   // Helper to check delete permission for a given clan (only ADM_MASTER)
    bool _canDeleteClan() {
      if (_currentUser == null) return false;
      return _currentUser!.role == Role.admMaster;
-  }
+   }
 
   // Helper to check transfer leadership permission for a given clan (only ADM_MASTER)
    bool _canTransferLeadership() {
@@ -703,7 +716,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                   itemCount: _clans.length,
                   itemBuilder: (context, index) {
                     final clan = _clans[index];
-                    final clanName = clan.name; // Assuming name is not null
+                    final clanName = clan.name;
 
                     // Check specific permissions for the current clan in the list
                     final bool canTransferLeadership = _canTransferLeadership();
