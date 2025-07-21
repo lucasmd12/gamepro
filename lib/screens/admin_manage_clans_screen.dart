@@ -43,15 +43,23 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
   late final FederationService _federationService;
   late final UserService _userService; // Adicionar UserService
   late final UploadService _uploadService; // Adicionar UploadService
+  
+  // Adicionando uma instância do PermissionService que será usada na tela
+  late final PermissionService _permissionService;
 
   @override
   void initState() {
     super.initState();
     // Inicializar serviços usando Provider
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     _clanService = Provider.of<ClanService>(context, listen: false);
     _federationService = Provider.of<FederationService>(context, listen: false);
-    _userService = Provider.of<UserService>(context, listen: false); // Inicializar UserService
-    _uploadService = Provider.of<UploadService>(context, listen: false); // Inicializar UploadService
+    _userService = Provider.of<UserService>(context, listen: false);
+    _uploadService = Provider.of<UploadService>(context, listen: false);
+    
+    // Inicializa o PermissionService com o AuthProvider
+    _permissionService = PermissionService(authProvider: authProvider);
+    
     _loadData();
   }
 
@@ -64,7 +72,6 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
     _currentUser = authProvider.currentUser;
 
     if (_currentUser == null) {
-      // User not logged in or not available, handle appropriately (e.g., navigate to login)
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -75,12 +82,10 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
 
     await _loadClans();
 
-    // Load federations only for ADM_MASTER or if a specific federationId is provided
     if (_currentUser!.role == Role.admMaster || widget.federationId != null) {
       await _loadFederations();
     }
 
-    // Check if the user is the designated leader of the provided federation
     if (_currentUser!.role != Role.admMaster && widget.federationId != null) {
       try {
         final designatedFederation = await _federationService.getFederationDetails(widget.federationId!);
@@ -89,7 +94,6 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
           _isDesignatedFederationLeader = designatedFederation.leader.id == _currentUser!.id;
         }
 
-        // If designated leader, pre-select this federation and limit the available federations list
         if (_isDesignatedFederationLeader && designatedFederation != null) {
           if (mounted) {
             setState(() {
@@ -118,10 +122,8 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
     if (!mounted) return;
 
     try {
-      // TODO: Consider filtering clans if federationId is provided and user is not ADM_MASTER for better performance
       final clans = await _clanService.getAllClans();
       if (mounted) {
-        // Filter out any potential nulls and ensure it's a List<Clan>
         setState(() {
           _clans = clans.whereType<Clan>().toList();
         });
@@ -145,7 +147,6 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
       final federations = await _federationService.getAllFederations();
       if (mounted) {
         setState(() {
-          // Safely assign federations, filtering out any potential nulls
           _availableFederations = federations.whereType<Federation>().toList();
         });
       }
@@ -177,22 +178,19 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
   }
 
   void _showCreateClanDialog() {
-    // Reset selected federation before showing dialog unless an initial one is provided
     if (widget.federationId == null) {
       _selectedFederationId = null;
     } else {
-      // If federationId is provided, make sure _selectedFederationId is set for the dropdown
       _selectedFederationId = widget.federationId;
     }
     _clanNameController.clear();
 
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) { // Usar dialogContext para evitar conflito
+      builder: (BuildContext dialogContext) {
         final authProvider = Provider.of<AuthProvider>(dialogContext, listen: false);
-        final currentUser = authProvider.currentUser!; // Assumindo que currentUser não é nulo aqui com base na lógica de _loadData
+        final currentUser = authProvider.currentUser!;
         final bool isAdmMaster = currentUser.role == Role.admMaster;
-        // Determine if the dropdown should be disabled (for designated leaders who are not ADM_MASTER)
         final bool disableFederationSelection = _isDesignatedFederationLeader && !isAdmMaster;
 
         return AlertDialog(
@@ -206,7 +204,6 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                   decoration: const InputDecoration(hintText: "Nome do Clã"),
                 ),
                 const SizedBox(height: 16),
-                // Image selection
                 ElevatedButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.image),
@@ -223,7 +220,6 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                     ),
                   ),
                 const SizedBox(height: 16),
-                // Show dropdown for ADM_MASTERs or if user is designated leader
                 if (isAdmMaster || _isDesignatedFederationLeader)
                   DropdownButtonFormField<String?>(
                     value: _selectedFederationId,
@@ -232,7 +228,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                       border: OutlineInputBorder(),
                     ),
                     items: [
-                      if (isAdmMaster && !_isDesignatedFederationLeader) // Only ADM_MASTERs not designated leaders can select "Nenhuma Federação"
+                      if (isAdmMaster && !_isDesignatedFederationLeader)
                         const DropdownMenuItem<String?>(
                           value: null,
                           child: Text("Nenhuma Federação"),
@@ -245,16 +241,13 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                       }).toList(),
                     ],
                     onChanged: disableFederationSelection ? null : (val) {
-                      // When user selects a federation manually (only if enabled)
                       setState(() {
                         _selectedFederationId = val;
                       });
                     },
-                    // Disable the dropdown if selection is not allowed
                     isDense: true,
                     iconDisabledColor: Colors.grey,
                     autovalidateMode: AutovalidateMode.disabled,
-                    // Add explicit disabled property for clarity
                     disabledHint: disableFederationSelection ? Text(_availableFederations.first.name) : null,
                   ),
               ],
@@ -276,23 +269,22 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                   return;
                 }
 
-                // If designated leader, ensure a federation is selected (it should be pre-selected)
                 if (_isDesignatedFederationLeader && _selectedFederationId == null) {
                   _showSnackBar("Internal Error: Designated leader must have a federation selected.", isError: true);
                   return;
                 }
 
-                Navigator.of(dialogContext).pop(); // Dismiss dialog
+                Navigator.of(dialogContext).pop();
 
                 try {
                   String? logoUrl;
                   if (_selectedImage != null) {
-                    final uploadResult = await _uploadService.uploadMissionImage(_selectedImage!); // Reusing mission image upload for now
+                    final uploadResult = await _uploadService.uploadMissionImage(_selectedImage!);
                     if (uploadResult["success"]) {
                       logoUrl = uploadResult["data"]["url"];
                     } else {
                       _showSnackBar("Falha ao fazer upload do logo: ${uploadResult["message"]}", isError: true);
-                      return; // Stop if logo upload fails
+                      return;
                     }
                   }
 
@@ -301,11 +293,9 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                     if (logoUrl != null) "logo": logoUrl,
                   };
 
-                  // Use the selected federation ID if available (for ADM_MASTER or designated leader)
                   if (isAdmMaster || _isDesignatedFederationLeader) {
                     clanData["federationId"] = _selectedFederationId;
                   } else {
-                    // This case should ideally not be reached due to FAB visibility, but as a safeguard:
                      _showSnackBar("Você não tem permissão para criar clãs.", isError: true);
                      return;
                   }
@@ -314,14 +304,13 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
 
                   if (newClan != null) {
                     _showSnackBar("Clan \"${newClan.name}\" created successfully!");
-                    _loadClans(); // Refresh the list
-                    // TODO: Consider navigating back or to the new clan\"s details if created by designated leader
+                    _loadClans();
                   } else {
                     _showSnackBar("Failed to create clan.", isError: true);
                   }
                 } catch (e, s) {
                   Logger.error("Error creating clan:", error: e, stackTrace: s);
-                  _showSnackBar("Failed to create clan: ${e.toString()}", isError: true); // Show detailed error
+                  _showSnackBar("Failed to create clan: ${e.toString()}", isError: true);
                 }
               },
             ),
@@ -333,15 +322,12 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
 
   void _showEditClanDialog(Clan clan) {
     _editClanNameController.text = clan.name;
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUser = authProvider.currentUser;
-    // Permission check for editing: ADM_MASTER or the leader of THIS specific clan
-    final bool canEdit = currentUser?.role == Role.admMaster || (currentUser?.id != null && currentUser?.id == clan.leaderId);
-
-    if (!canEdit) {
+    
+    // A verificação de permissão agora usa o método centralizado _canEditClan
+    if (!_canEditClan(clan)) {
       showDialog(
         context: context,
-        builder: (BuildContext dialogContext) { // Usar dialogContext
+        builder: (BuildContext dialogContext) {
           return AlertDialog(
             title: const Text("Permissão Negada"),
             content: const Text("Você não tem permissão para editar este clã."),
@@ -354,13 +340,12 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
           );
         },
       );
-      return; // Stop here if no permission
+      return;
     }
-
 
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) { // Usar dialogContext
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: Text("Editar Clã: ${clan.name}"),
           content: TextField(
@@ -382,19 +367,19 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                   _showSnackBar("Clan name cannot be empty.", isError: true);
                   return;
                 }
-                Navigator.of(dialogContext).pop(); // Dismiss dialog
+                Navigator.of(dialogContext).pop();
 
                 try {
                   final updatedClan = await _clanService.updateClanDetails(clan.id, name: newName);
                   if (updatedClan != null) {
                     _showSnackBar("Clan \"${updatedClan.name}\" updated successfully!");
-                    _loadClans(); // Refresh the list
+                    _loadClans();
                   } else {
                     _showSnackBar("Failed to update clan.", isError: true);
                   }
                 } catch (e, s) {
                    Logger.error("Error updating clan ${clan.id}:", error: e, stackTrace: s);
-                   _showSnackBar("Failed to update clan: ${e.toString()}", isError: true); // Show detailed error
+                   _showSnackBar("Failed to update clan: ${e.toString()}", isError: true);
                 }
               },
             ),
@@ -408,7 +393,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
     final TextEditingController newLeaderUsernameController = TextEditingController();
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) { // Usar dialogContext
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: Text("Transferir Liderança do Clã: ${clan.name}"),
           content: TextField(
@@ -430,23 +415,20 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                   _showSnackBar("O nome de usuário ou ID do novo líder não pode ser vazio.", isError: true);
                   return;
                 }
-                Navigator.of(dialogContext).pop(); // Dismiss dialog
+                Navigator.of(dialogContext).pop();
 
                 try {
-                  // Assumindo que o input é o ID do usuário para simplificar por agora.
-                  // Se a API esperar o username, a lógica aqui precisará buscar o ID do usuário pelo username primeiro.
                   final success = await _clanService.transferClanLeadership(clan.id, newLeaderUsernameOrId);
 
                   if (success) {
                     _showSnackBar("Liderança do clã \"${clan.name}\" transferida com sucesso!");
-                    // Opcional: Recarregar a lista de clãs para refletir a mudança de líder
                     _loadClans();
                   } else {
                     _showSnackBar("Failed to transfer clan leadership.", isError: true);
                   }
                 } catch (e, s) {
                   Logger.error("Error transferring clan leadership:", error: e, stackTrace: s);
-                  _showSnackBar("Failed to transfer clan leadership: ${e.toString()}", isError: true); // Added detailed error
+                  _showSnackBar("Failed to transfer clan leadership: ${e.toString()}", isError: true);
                 }
               },
             ),
@@ -457,15 +439,10 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
   }
 
   void _showDeleteClanConfirmationDialog(Clan clan) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUser = authProvider.currentUser;
-    // Permission check for deleting: only ADM_MASTER
-    final bool canDelete = currentUser?.role == Role.admMaster;
-
-    if (!canDelete) {
+    if (!_canDeleteClan()) {
        showDialog(
         context: context,
-        builder: (BuildContext dialogContext) { // Usar dialogContext
+        builder: (BuildContext dialogContext) {
           return AlertDialog(
             title: const Text("Permissão Negada"),
             content: const Text("Você não tem permissão para excluir clãs."),
@@ -478,12 +455,12 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
           );
         },
       );
-      return; // Stop here if no permission
+      return;
     }
 
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) { // Usar dialogContext
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text("Confirmar Exclusão"),
           content: Text("Tem certeza que deseja excluir o clã \"${clan.name}\"?"),
@@ -497,20 +474,20 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
             TextButton(
               child: const Text("Excluir"),
               onPressed: () async {
-                Navigator.of(dialogContext).pop(); // Dismiss dialog
+                Navigator.of(dialogContext).pop();
 
                 try {
                   bool success = await _clanService.deleteClan(clan.id);
 
                   if (success) {
                     _showSnackBar("Clan \"${clan.name}\" deleted successfully!");
-                    _loadClans(); // Refresh the list on success
+                    _loadClans();
                   } else {
                     _showSnackBar("Failed to delete clan.", isError: true);
                   }
                 } catch (e, s) {
                    Logger.error("Error deleting clan ${clan.id}:", error: e, stackTrace: s);
-                   _showSnackBar("Failed to delete clan: ${e.toString()}", isError: true); // Show detailed error
+                   _showSnackBar("Failed to delete clan: ${e.toString()}", isError: true);
                 }
               },
             ),
@@ -521,39 +498,40 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
   }
 
   // =================================================================================
-  // [CORRIGIDO] A função _canEditClan agora cria uma instância do PermissionService.
+  // FUNÇÕES DE VERIFICAÇÃO DE PERMISSÃO CENTRALIZADAS
+  // Todas as verificações agora usam a instância _permissionService.
   // =================================================================================
+
   bool _canEditClan(Clan clan) {
-    if (_currentUser == null) return false;
-
-return permissionService.canManageClan(clan);
-
+    // CORREÇÃO APLICADA: Usa a instância _permissionService criada no initState.
+    return _permissionService.canManageClan(clan);
   }
 
-  // Helper to check delete permission for a given clan (only ADM_MASTER)
-   bool _canDeleteClan() {
-     if (_currentUser == null) return false;
-     return _currentUser!.role == Role.admMaster;
-   }
+  bool _canDeleteClan() {
+    // Esta lógica é simples, então pode continuar aqui ou ser movida para o serviço.
+    // Para consistência, vamos movê-la para o serviço também.
+    return _permissionService.canAccessAdminPanel(); // Assumindo que só ADM pode deletar.
+  }
 
-  // Helper to check transfer leadership permission for a given clan (only ADM_MASTER)
-   bool _canTransferLeadership() {
-     if (_currentUser == null) return false;
-     return _currentUser!.role == Role.admMaster;
-   }
+  bool _canTransferLeadership() {
+    return _permissionService.canAccessAdminPanel(); // Assumindo que só ADM pode transferir.
+  }
 
-  // Helper to check declare war permission (only ADM_MASTER)
   bool _canDeclareWar() {
-    if (_currentUser == null) return false;
-    return _currentUser!.role == Role.admMaster;
+    // A permissão para declarar guerra pode depender do clã de origem.
+    // Por enquanto, vamos manter uma verificação geral.
+    return _permissionService.canAccessAdminPanel(); // Simplificado.
+  }
+  
+  bool _canCreateClans() {
+      return _permissionService.canCreateClan();
   }
 
-  // NOTE: _showAssignClanDialog was moved here from outside the class
   void _showAssignClanDialog(User user) {
     String? selectedClanId;
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) { // Usar dialogContext
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: Text("Atribuir Clã para ${user.username}"),
           content: DropdownButtonFormField<String?>(
@@ -609,12 +587,11 @@ return permissionService.canManageClan(clan);
     );
   }
 
-  // NOTE: _showDeclareWarDialog was moved here from outside the class
   void _showDeclareWarDialog(Clan attackingClan) {
     String? targetClanId;
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) { // Usar dialogContext
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: Text("Declarar Guerra de ${attackingClan.name}"),
           content: DropdownButtonFormField<String?>(
@@ -655,10 +632,14 @@ return permissionService.canManageClan(clan);
                 }
                 Navigator.of(dialogContext).pop();
                 try {
+                  // A verificação de permissão deve ser feita antes de chamar o serviço
+                  if (!_permissionService.canDeclareWar(attackingClan)) {
+                      _showSnackBar("Você não tem permissão para declarar guerra por este clã.", isError: true);
+                      return;
+                  }
                   final clanWar = await _clanService.declareWar(attackingClan.id, targetClanId!);
                   if (clanWar != null) {
                     _showSnackBar("Guerra declarada com sucesso!");
-                    // Opcional: Atualizar a lista de guerras ou navegar para a tela de guerras
                   } else {
                     _showSnackBar("Falha ao declarar guerra.", isError: true);
                   }
@@ -677,24 +658,18 @@ return permissionService.canManageClan(clan);
 
   @override
   Widget build(BuildContext context) {
-    // Ensure currentUser is available for conditional rendering
     if (_currentUser == null && !_isLoading) {
-      // Or show a loading indicator or redirect
       return Scaffold(
         appBar: AppBar(title: const Text("Gerenciar Clãs")),
-        body: const Center(child: Text("Por favor, faça login para gerenciar clãs.")), // More informative message
+        body: const Center(child: Text("Por favor, faça login para gerenciar clãs.")),
       );
     }
-
-    // Determine if the user can create clans (ADM_MASTER or designated federation leader)
-    final bool canCreateClans = _currentUser?.role == Role.admMaster || _isDesignatedFederationLeader;
-
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Gerenciar Clãs"),
       ),
-      body: _isLoading && _clans.isEmpty // Show loading only initially or when refreshing
+      body: _isLoading && _clans.isEmpty
           ? const Center(
               child: CircularProgressIndicator(),
             )
@@ -709,64 +684,54 @@ return permissionService.canManageClan(clan);
                     final clan = _clans[index];
                     final clanName = clan.name;
 
-                    // Check specific permissions for the current clan in the list
-                    final bool canTransferLeadership = _canTransferLeadership();
-                    final bool canEditThisClan = _canEditClan(clan);
-                    final bool canDeleteAnyClan = _canDeleteClan(); // Delete is global for ADM_MASTER
+                    final bool canTransfer = _canTransferLeadership();
+                    final bool canEdit = _canEditClan(clan);
+                    final bool canDelete = _canDeleteClan();
+                    final bool canWar = _permissionService.canDeclareWar(clan); // Verificação específica por clã
 
                     return ListTile(
                       title: Text(clanName),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                           if (canTransferLeadership) // Conditionally show transfer leadership button
+                           if (canTransfer)
                              IconButton(
                                 icon: const Icon(Icons.transfer_within_a_station),
-                                onPressed: () {
-                                  _showTransferLeadershipDialog(clan);
-                                },
+                                onPressed: () => _showTransferLeadershipDialog(clan),
                                 tooltip: "Transferir Liderança",
                              ),
-                           if (canEditThisClan) // Conditionally show edit button
+                           if (canEdit)
                              IconButton(
                                 icon: const Icon(Icons.edit),
-                                onPressed: () {
-                                  _showEditClanDialog(clan);
-                                },
+                                onPressed: () => _showEditClanDialog(clan),
                                 tooltip: "Editar Clã",
                              ),
-                           if (canDeleteAnyClan) // Conditionally show delete button
+                           if (canDelete)
                              IconButton(
                                 icon: const Icon(Icons.delete),
-                                onPressed: () {
-                                  _showDeleteClanConfirmationDialog(clan);
-                                },
+                                onPressed: () => _showDeleteClanConfirmationDialog(clan),
                                 tooltip: "Excluir Clã",
                              ),
-                           if (_canDeclareWar()) // Conditionally show declare war button
+                           if (canWar)
                              IconButton(
                                 icon: const Icon(Icons.gavel),
-                                onPressed: () {
-                                  _showDeclareWarDialog(clan);
-                                },
+                                onPressed: () => _showDeclareWarDialog(clan),
                                 tooltip: "Declarar Guerra",
                              ),
-                            // If no actions are allowed for this clan, hide the row
-                            if (!canEditThisClan && !canDeleteAnyClan && !canTransferLeadership && !_canDeclareWar())
-                              const SizedBox.shrink(), // Hide the row if no actions
+                            if (!canEdit && !canDelete && !canTransfer && !canWar)
+                              const SizedBox.shrink(),
                         ],
                       ),
                     );
                   },
                 ),
-      // Show FAB for ADM_MASTERs OR for Federation Leaders when navigating from their federation detail
-      floatingActionButton: canCreateClans
+      floatingActionButton: _canCreateClans()
           ? FloatingActionButton(
               onPressed: _showCreateClanDialog,
               tooltip: "Criar Novo Clã",
               child: const Icon(Icons.add),
             )
-          : null, // Hide FAB for other users
+          : null,
     );
   }
 
