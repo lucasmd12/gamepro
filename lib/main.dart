@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_app_check/firebase_app_check.dart'; // 👈 ADICIONADO
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package.info_plus/package_info_plus.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 // Import Screens
 import 'screens/animation_showcase_screen.dart';
-
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -23,7 +22,7 @@ import 'screens/call_contacts_screen.dart';
 import 'screens/qrr_create_screen.dart';
 import 'screens/qrr_edit_screen.dart';
 import 'screens/qrr_participants_screen.dart';
-import 'screens/admin_panel_screen.dart'; // Import the admin panel screen
+import 'screens/admin_panel_screen.dart';
 
 // Import Services, Providers and Models
 import 'services/api_service.dart';
@@ -37,13 +36,26 @@ import 'services/notification_service.dart';
 import 'services/mission_service.dart';
 import 'services/firebase_service.dart';
 import 'services/qrr_service.dart';
-import 'services/user_service.dart'; // Importando UserService
-import 'services/upload_service.dart'; // Importando UploadService
-import 'services/post_service.dart'; // Importando PostService
+import 'services/user_service.dart';
+import 'services/upload_service.dart';
+import 'services/post_service.dart';
 import 'services/voip_service.dart';
-import 'services/clan_war_service.dart'; // Importando ClanWarService
+import 'services/clan_war_service.dart';
+//  IMPORTAÇÕES ADICIONADAS
+import 'services/stats_service.dart';
+import 'services/admin_service.dart';
+import 'services/permission_service.dart';
+import 'services/context_service.dart';
+import 'services/media_service.dart';
+import 'services/role_service.dart';
+import 'services/questionnaire_service.dart';
+import 'services/http_file_service.dart';
+import 'services/keep_alive_service.dart';
+import 'services/sync_service.dart';
+import 'services/cache_service.dart'; // Necessário para o SyncService
+
 import 'models/qrr_model.dart';
-import 'models/role_model.dart'; // Import Role enum
+import 'models/role_model.dart';
 import 'providers/auth_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/call_provider.dart';
@@ -59,7 +71,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // 👇 ATIVA O APP CHECK COM TOKEN DE DEPURAÇÃO
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.debug,
     appleProvider: AppleProvider.debug,
@@ -129,20 +140,21 @@ class FEDERACAOMADApp extends StatelessWidget {
   Widget build(BuildContext context) {
     Logger.info("Building FEDERACAOMADApp Widget.");
 
+    // Estes serviços podem ser criados aqui se não tiverem dependências complexas
     final apiService = ApiService();
     final authService = AuthService();
     final socketService = SocketService();
-    final signalingService = SignalingService(socketService);
     final missionService = MissionService(apiService);
 
     return MultiProvider(
       providers: [
+        // --- SERVIÇOS EXISTENTES ---
         Provider<ApiService>.value(value: apiService),
         ChangeNotifierProvider<AuthService>.value(value: authService),
         Provider<UserService>(create: (context) => UserService(apiService)),
         Provider<UploadService>(create: (_) => UploadService()),
         Provider<SocketService>.value(value: socketService),
-        ChangeNotifierProvider<SignalingService>.value(value: SignalingService(socketService)),
+        ChangeNotifierProvider<SignalingService>(create: (context) => SignalingService(context.read<SocketService>())),
         Provider<PostService>(create: (context) => PostService(apiService)),
         Provider<ClanWarService>(create: (context) => ClanWarService(apiService)),
         ChangeNotifierProvider<FederationService>(create: (context) => FederationService(apiService)),
@@ -154,7 +166,7 @@ class FEDERACAOMADApp extends StatelessWidget {
           final socketService = context.read<SocketService>();
           final authService = context.read<AuthService>();
           voipService.init(socketService, authService);
-          voipService.initialize(); // Initialize Jitsi listeners and permissions
+          voipService.initialize();
           return voipService;
         }),
         ChangeNotifierProvider<FirebaseService>(create: (context) => FirebaseService(context.read<ApiService>())),
@@ -163,6 +175,8 @@ class FEDERACAOMADApp extends StatelessWidget {
           authService: context.read<AuthService>(),
           socketService: context.read<SocketService>(),
           uploadService: context.read<UploadService>())),
+        
+        // --- PROVIDERS DE ESTADO EXISTENTES ---
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(
             context.read<SocketService>(),
@@ -177,6 +191,46 @@ class FEDERACAOMADApp extends StatelessWidget {
           create: (context) => MissionProvider(context.read<MissionService>()),
         ),
         ChangeNotifierProvider<QRRService>(create: (context) => QRRService(context.read<ApiService>())),
+
+        // ---  SERVIÇOS ADICIONADOS ---
+        Provider<StatsService>(
+          create: (context) => StatsService(context.read<ApiService>()),
+        ),
+        Provider<AdminService>(
+          create: (context) => AdminService(context.read<ApiService>()),
+        ),
+        Provider<PermissionService>(
+          // Nota: O AuthProvider será passado para o PermissionService quando necessário,
+          // em vez de injetá-lo aqui para evitar dependências circulares.
+          create: (context) => PermissionService(),
+        ),
+        Provider<ContextService>(
+          create: (context) => ContextService(),
+        ),
+        Provider<MediaService>(
+          create: (context) => MediaService(context.read<ApiService>()),
+        ),
+        Provider<RoleService>(
+          create: (context) => RoleService(context.read<ApiService>()),
+        ),
+        Provider<QuestionnaireService>(
+          create: (context) => QuestionnaireService(context.read<ApiService>()),
+        ),
+        Provider<HttpFileService>(
+          create: (context) => HttpFileService(),
+        ),
+        Provider<KeepAliveService>(
+          create: (context) => KeepAliveService(),
+        ),
+        Provider<CacheService>( // CacheService precisa ser fornecido
+          create: (context) => CacheService(),
+        ),
+        Provider<SyncService>(
+          create: (context) => SyncService(
+            context.read<ApiService>(),
+            context.read<CacheService>(),
+          ),
+        ),
       ],
       child: AppLifecycleReactor(
         child: MaterialApp(
@@ -190,11 +244,10 @@ class FEDERACAOMADApp extends StatelessWidget {
                 if (authProvider.authStatus == AuthStatus.unknown) {
                   return const SplashScreen();
                 } else if (authProvider.authStatus == AuthStatus.authenticated) {
-                  // Check user role after authentication
                   if (authProvider.currentUser?.role == Role.admMaster) {
                     return const AdminPanelScreen();
                   }
-                  return const HomeScreen(); // Default to HomeScreen for other roles
+                  return const HomeScreen();
                 } else {
                   return const LoginScreen();
                 }
@@ -211,9 +264,6 @@ class FEDERACAOMADApp extends StatelessWidget {
               final roomName = args?['roomName'] ?? 'default_room';
               final contactName = args?['contactName'];
               final contactId = args?['contactId'];
-              final isIncomingCall = args?['isIncomingCall'] ?? false;
-
-              // Passar argumentos EXCLUSIVAMENTE como nomeados para o construtor CallPage
               return CallPage(
                 roomName: roomName,
                 contactName: contactName,
@@ -263,4 +313,3 @@ class FEDERACAOMADApp extends StatelessWidget {
     );
   }
 }
-
