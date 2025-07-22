@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lucasbeatsfederacao/screens/login_screen.dart';
-import 'package:lucasbeatsfederacao/screens/media/profile_picture_manager.dart';
+// import 'package:lucasbeatsfederacao/screens/media/profile_picture_manager.dart'; // Removido
 import 'package:lucasbeatsfederacao/screens/admin_panel_screen.dart';
 import 'package:lucasbeatsfederacao/models/role_model.dart';
+import 'package:lucasbeatsfederacao/screens/profile_edit_screen.dart'; // Import the new screen
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -40,9 +41,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   GestureDetector(
                     onTap: () {
+                      // Navega para a tela de edição de perfil, que já gerencia a foto
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => const ProfilePictureManagerScreen(),
+                          builder: (context) => const ProfileEditScreen(),
                         ),
                       );
                     },
@@ -79,6 +81,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'Clã: ${currentUser.clanName} ${currentUser.clanTag != null ? '(${currentUser.clanTag})' : ''}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const ProfileEditScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.edit),
+                    label: const Text('Editar Perfil'),
+                  ),
                 ],
               ),
             ),
