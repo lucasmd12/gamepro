@@ -41,7 +41,7 @@ import 'services/upload_service.dart';
 import 'services/post_service.dart';
 import 'services/voip_service.dart';
 import 'services/clan_war_service.dart';
-//  IMPORTAÇÕES ADICIONADAS
+// IMPORTAÇÕES ADICIONADAS
 import 'services/stats_service.dart';
 import 'services/admin_service.dart';
 import 'services/context_service.dart';
@@ -51,7 +51,11 @@ import 'services/questionnaire_service.dart';
 import 'services/http_file_service.dart';
 import 'services/keep_alive_service.dart';
 import 'services/sync_service.dart';
-import 'services/cache_service.dart'; // Necessário para o SyncService
+import 'services/cache_service.dart';
+// ==================== INÍCIO DA CORREÇÃO ====================
+// Importando o serviço que estava faltando
+import 'services/invite_service.dart';
+// ===================== FIM DA CORREÇÃO ======================
 
 import 'models/qrr_model.dart';
 import 'models/role_model.dart';
@@ -138,7 +142,6 @@ class FEDERACAOMADApp extends StatelessWidget {
   Widget build(BuildContext context) {
     Logger.info("Building FEDERACAOMADApp Widget.");
 
-    // Estes serviços podem ser criados aqui se não tiverem dependências complexas
     final apiService = ApiService();
     final authService = AuthService();
     final socketService = SocketService();
@@ -190,7 +193,15 @@ class FEDERACAOMADApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<QRRService>(create: (context) => QRRService(context.read<ApiService>())),
 
-        // ---  SERVIÇOS ADICIONADOS ---
+        // ==================== INÍCIO DA CORREÇÃO ====================
+        // Adicionando o InviteService que estava faltando.
+        // Ele precisa do ApiService, então usamos context.read para obtê-lo.
+        Provider<InviteService>(
+          create: (context) => InviteService(context.read<ApiService>()),
+        ),
+        // ===================== FIM DA CORREÇÃO ======================
+
+        // --- SERVIÇOS ADICIONADOS ---
         Provider<StatsService>(
           create: (context) => StatsService(context.read<ApiService>()),
         ),
@@ -218,7 +229,6 @@ class FEDERACAOMADApp extends StatelessWidget {
         Provider<CacheService>.value(
           value: CacheService.instance,
         ),
-        // [CORRIGIDO] Passando SocketService em vez de CacheService
         Provider<SyncService>(
           create: (context) => SyncService(
             context.read<ApiService>(),
