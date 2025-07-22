@@ -51,7 +51,7 @@ android {
     // ✅✅✅ CORREÇÃO ADICIONADA AQUI ✅✅✅
     // Pede mais memória para o processo de compilação para evitar o erro "Java heap space".
     dexOptions {
-        javaMaxHeapSize "4g"
+        javaMaxHeapSize "8g"
     }
 
     kotlinOptions {
