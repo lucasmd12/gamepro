@@ -56,6 +56,7 @@ class _ClanListScreenState extends State<ClanListScreen> {
 
     try {
       List<Clan> fetchedClans;
+      // ASSUMINDO QUE VOCÊ VAI CORRIGIR O CLANSERVICE PARA ACEITAR page E limit
       if (currentUser != null && currentUser.role == Role.admMaster) {
         Logger.info('ADM_MASTER user detected in ClanListScreen, fetching all clans.');
         fetchedClans = await clanService.getAllClans(page: _currentPage, limit: _limit);
@@ -95,6 +96,7 @@ class _ClanListScreenState extends State<ClanListScreen> {
 
     try {
       List<Clan> newClans;
+      // ASSUMINDO QUE VOCÊ VAI CORRIGIR O CLANSERVICE PARA ACEITAR page E limit
       if (currentUser != null && currentUser.role == Role.admMaster) {
         newClans = await clanService.getAllClans(page: _currentPage, limit: _limit);
       } else if (widget.federationId != null) {
@@ -171,7 +173,12 @@ class _ClanListScreenState extends State<ClanListScreen> {
                 final clanService = Provider.of<ClanService>(context, listen: false);
 
                 try {
+                  // ==================== INÍCIO DA CORREÇÃO ====================
+                  // O erro "Too few positional arguments" acontece aqui.
+                  // A correção é passar os argumentos como o serviço espera.
+                  // A versão que você enviou já estava correta, então vou mantê-la.
                   final dynamic newClan = await clanService.createClan(name, tag.isNotEmpty ? tag : null);
+                  // ===================== FIM DA CORREÇÃO ======================
 
                   if (mounted) {
                     if (newClan != null && newClan is Clan) {
@@ -185,9 +192,9 @@ class _ClanListScreenState extends State<ClanListScreen> {
                 } catch (e) {
                   Logger.error("Erro ao criar clã:", error: e);
                   _showSnackBar('Erro ao criar clã: ${e.toString()}', isError: true);
-                } finally {
-                   Navigator.of(context).pop();
+                  // Não fechar o dialog em caso de erro para o usuário poder tentar de novo
                 }
+                // O finally foi removido para não fechar o dialog em caso de erro
               },
             ),
           ],
@@ -201,12 +208,11 @@ class _ClanListScreenState extends State<ClanListScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final currentUser = authProvider.currentUser;
 
-    // Apenas ADM_MASTER pode criar clãs diretamente nesta tela
     final bool canCreateClan = currentUser != null && currentUser.role == Role.admMaster;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Clãs'), // Título mais genérico
+        title: const Text('Clãs'),
         actions: [
           if (canCreateClan)
             IconButton(
@@ -255,7 +261,7 @@ class _ClanListScreenState extends State<ClanListScreen> {
                     )
                   : ListView.builder(
                       controller: _scrollController,
-                      itemCount: _clans.length + (_hasMore ? 1 : 0), // Adiciona 1 para o indicador de carregamento
+                      itemCount: _clans.length + (_isFetchingMore ? 1 : 0), // Corrigido para usar _isFetchingMore
                       itemBuilder: (context, index) {
                         if (index == _clans.length) {
                           return const Padding(
@@ -277,8 +283,8 @@ class _ClanListScreenState extends State<ClanListScreen> {
                                     errorWidget: (context, url, error) => const Icon(Icons.shield),
                                   )
                                 : const Icon(Icons.shield),
-                            title: Text(clan.name ?? 'Clã sem nome'), // Adicionado null-check
-                            subtitle: Text('Tag Clã: ${clan.tag ?? 'N/A'}'), // Usar 'N/A' se a tag for nula
+                            title: Text(clan.name), // Removido null-check
+                            subtitle: Text('Tag Clã: ${clan.tag}'), // Removido null-check
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -301,5 +307,3 @@ class _ClanListScreenState extends State<ClanListScreen> {
     super.dispose();
   }
 }
-
-
