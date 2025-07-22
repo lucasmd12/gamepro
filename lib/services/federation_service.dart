@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart'; // For debugPrint
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucasbeatsfederacao/models/federation_model.dart';
 import 'package:lucasbeatsfederacao/services/api_service.dart';
+import 'package:lucasbeatsfederacao/utils/logger.dart';
 
-import 'package:lucasbeatsfederacao/utils/logger.dart'; // Importar o Logger
 class FederationService extends ChangeNotifier {
   final ApiService _apiService;
   
@@ -12,31 +12,41 @@ class FederationService extends ChangeNotifier {
 
   FederationService(this._apiService);
 
-  // Getters para o estado
   List<Federation> get federations => _federations;
   bool get isLoading => _isLoading;
 
-  Future<List<Federation>> getAllFederations() async {
+  // ==================== INÍCIO DA CORREÇÃO 1 ====================
+  Future<List<Federation>> getAllFederations({int page = 1, int limit = 10}) async {
     _isLoading = true;
     notifyListeners();
     
     try {
-      final response = await _apiService.get('/api/federations', requireAuth: true);
+      // Adicionando os parâmetros de paginação na URL da API
+      final endpoint = '/api/federations?page=$page&limit=$limit';
+      final response = await _apiService.get(endpoint, requireAuth: true);
+
       if (response != null && response['success'] == true && response['data'] is List) {
         final List<dynamic> federationsData = response['data'];
-        _federations = federationsData.map((json) => Federation.fromJson(json)).toList();
-        _isLoading = false;
-        notifyListeners();
-        return _federations;
+        final newFederations = federationsData.map((json) => Federation.fromJson(json)).toList();
+        
+        // A tela gerencia a adição de itens, o serviço apenas retorna o que foi buscado.
+        // Atualizamos a lista interna do serviço se for a primeira página.
+        if (page == 1) {
+          _federations = newFederations;
+        }
+        
+        return newFederations;
       }
     } catch (e) {
       debugPrint('Error fetching all federations: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
     
-    _isLoading = false;
-    notifyListeners();
-    return _federations;
+    return []; // Retorna lista vazia em caso de erro
   }
+  // ===================== FIM DA CORREÇÃO DE PAGINAÇÃO ======================
 
   Future<Federation?> getFederationDetails(String federationId) async {
     try {
@@ -50,16 +60,21 @@ class FederationService extends ChangeNotifier {
     return null;
   }
 
-  Future<Federation?> createFederation(Map<String, dynamic> federationData) async {
+  // ==================== INÍCIO DA CORREÇÃO 2 ====================
+  Future<Federation?> createFederation(String name, String? description) async {
+    // Construindo o mapa de dados aqui dentro do método
+    final Map<String, dynamic> federationData = {
+      'name': name,
+      if (description != null && description.isNotEmpty) 'description': description,
+    };
+
     try {
       final response = await _apiService.post('/api/federations', federationData, requireAuth: true);
       if (response != null && response["success"] == true && response["data"] != null) {
         final newFederation = Federation.fromJson(response["data"]);
-        notifyListeners(); // Notifica os listeners após a criação bem-sucedida
+        // Não precisa notificar listeners aqui, a tela vai recarregar a lista
         return newFederation;
-      }
-      // Adiciona logging se a resposta não for bem-sucedida
-      else {
+      } else {
         Logger.error('Failed to create federation. Response: $response');
       }
     } catch (e) {
@@ -67,6 +82,7 @@ class FederationService extends ChangeNotifier {
     }
     return null;
   }
+  // ===================== FIM DA CORREÇÃO DE CRIAÇÃO ======================
 
   Future<bool> deleteFederation(String federationId) async {
     Logger.info("Attempting to delete federation with ID: $federationId");
@@ -74,6 +90,7 @@ class FederationService extends ChangeNotifier {
       final response = await _apiService.delete("/api/federations/$federationId", requireAuth: true);
       if (response != null && response["success"] == true) {
         Logger.info("Federation with ID $federationId deleted successfully.");
+        _federations.removeWhere((fed) => fed.id == federationId); // Remove da lista local
         notifyListeners();
         return true;
       } else {
@@ -154,7 +171,7 @@ class FederationService extends ChangeNotifier {
   Future<bool> transferFederationLeadership(String federationId, String newLeaderUserId) async {
     try {
       final response = await _apiService.put('/api/federations/$federationId/leader', {'newLeaderId': newLeaderUserId}, requireAuth: true);
-      if (response != null && (response is Map<String, dynamic> && response.containsKey('success') && response['success'] == true || response == '')) { // Handle success for both JSON and empty responses
+      if (response != null && (response is Map<String, dynamic> && response.containsKey('success') && response['success'] == true || response == '')) {
         Logger.info('Federation $federationId leadership transferred successfully to $newLeaderUserId.');
         return true;
       } else {
@@ -194,8 +211,6 @@ class FederationService extends ChangeNotifier {
 
   Future<bool> updateFederationBanner(String federationId, String bannerPath) async {
     try {
-      // Nota: Este método precisará ser implementado com multipart/form-data
-      // Por enquanto, mantemos a estrutura básica
       debugPrint("Banner update for federation $federationId with path $bannerPath");
       // TODO: Implementar upload de arquivo multipart/form-data
       return false;
@@ -205,7 +220,6 @@ class FederationService extends ChangeNotifier {
     }
   }
 
-  // Método para remover aliado
   Future<bool> removeAlly(String federationId, String allyId) async {
     try {
       final response = await _apiService.put("/api/federations/$federationId/remove-ally/$allyId", {}, requireAuth: true);
@@ -219,7 +233,6 @@ class FederationService extends ChangeNotifier {
     return false;
   }
 
-  // Método para remover inimigo
   Future<bool> removeEnemy(String federationId, String enemyId) async {
     try {
       final response = await _apiService.put("/api/federations/$federationId/remove-enemy/$enemyId", {}, requireAuth: true);
@@ -233,5 +246,3 @@ class FederationService extends ChangeNotifier {
     return false;
   }
 }
-
-
