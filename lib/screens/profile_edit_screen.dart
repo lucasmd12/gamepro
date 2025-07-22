@@ -56,9 +56,23 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     String? newAvatarUrl;
     if (_newProfileImage != null) {
       try {
-        final uploadResult = await uploadService.uploadProfileImage(File(_newProfileImage!.path));
+        // CORREÇÃO 1: Usar o nome correto do método: uploadAvatar
+        final uploadResult = await uploadService.uploadAvatar(File(_newProfileImage!.path));
+        
+        // A estrutura de resposta do seu serviço parece ser diferente. Ajustando para o que foi visto.
         if (uploadResult['success'] == true && uploadResult['data'] != null) {
-          newAvatarUrl = uploadResult["data"][0]["url"];
+          // O serviço de avatar pode retornar a URL diretamente no 'data' ou dentro de uma lista.
+          // Vamos assumir que 'data' contém a URL ou um objeto com a URL.
+          if (uploadResult['data'] is Map && uploadResult['data']['url'] != null) {
+             newAvatarUrl = uploadResult['data']['url'];
+          } else if (uploadResult['data'] is String) {
+             newAvatarUrl = uploadResult['data'];
+          } else {
+            Logger.error('Formato inesperado da URL do avatar: ${uploadResult['data']}');
+            CustomSnackbar.showError(context, 'Erro ao processar a resposta do upload.');
+            setState(() => _isLoading = false);
+            return;
+          }
         } else {
           Logger.error('Erro no upload da imagem: ${uploadResult['message']}');
           CustomSnackbar.showError(context, 'Erro no upload da imagem: ${uploadResult['message']}');
@@ -81,7 +95,13 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       );
 
       if (updatedUser != null) {
-        authProvider.setCurrentUser(updatedUser); // Atualiza o usuário no AuthProvider
+        // CORREÇÃO 2: Remover a chamada ao método inexistente.
+        // O AuthProvider vai ouvir as mudanças do AuthService e se atualizar sozinho.
+        // authProvider.setCurrentUser(updatedUser); 
+        
+        // Para forçar a atualização imediata na UI, podemos chamar o método que valida o token novamente.
+        await authProvider.authService.validateToken();
+
         CustomSnackbar.showSuccess(context, 'Perfil atualizado com sucesso!');
         if (mounted) Navigator.pop(context);
       } else {
@@ -182,5 +202,3 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     );
   }
 }
-
-
