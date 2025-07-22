@@ -3,11 +3,8 @@ import 'package:lucasbeatsfederacao/models/role_model.dart';
 import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/services/federation_service.dart';
 import '../../widgets/custom_snackbar.dart';
-
-// CORREÇÃO: Importando os arquivos que realmente existem no seu projeto
-import 'package:lucasbeatsfederacao/screens/admin/admin_organization_management.dart';
 import 'package:lucasbeatsfederacao/screens/admin/admin_user_management.dart';
-
+import 'package:lucasbeatsfederacao/screens/admin/admin_organization_management.dart';
 import 'package:lucasbeatsfederacao/screens/clan_management_screen.dart';
 import 'package:lucasbeatsfederacao/screens/federation_list_screen.dart';
 
@@ -50,7 +47,6 @@ class QuickActionsWidget extends StatelessWidget {
     switch (userRole) {
       case Role.admMaster:
         return _buildAdminActions(context);
-      case Role.user:
       case Role.clanLeader:
         return _buildLeaderActions(context);
       case Role.clanSubLeader:
@@ -58,6 +54,8 @@ class QuickActionsWidget extends StatelessWidget {
       case Role.clanMember:
         return _buildMemberActions(context);
       case Role.guest:
+        return _buildGuestActions(context);
+      case Role.user:
         return _buildUserActions(context);
       default:
         return _buildGuestActions(context);
@@ -83,8 +81,7 @@ class QuickActionsWidget extends StatelessWidget {
           Colors.blueGrey,
           () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const FederationListScreen()),
-          ),
+            MaterialPageRoute(builder: (context) => const FederationListScreen())),
         ),
         _buildActionButton(
           context,
@@ -93,7 +90,6 @@ class QuickActionsWidget extends StatelessWidget {
           Colors.orange,
           () => Navigator.push(
             context,
-            // CORREÇÃO: Usando a classe correta que foi importada
             MaterialPageRoute(builder: (context) => const AdminOrganizationManagementScreen()),
           ),
         ),
@@ -104,17 +100,13 @@ class QuickActionsWidget extends StatelessWidget {
           Colors.green,
           () => Navigator.push(
             context,
-            // CORREÇÃO: Usando a classe correta que foi importada
-            MaterialPageRoute(builder: (context) => const AdminUserManagementScreen()),
-          ),
+            MaterialPageRoute(builder: (context) => const AdminUserManagementScreen())),
         ),
         _buildActionButton(
           context,
           'Fazer Chamada',
           Icons.call,
-          Colors.green,
-          () => _showCallDialog(context),
-        ),
+          Colors.green, () => _showCallDialog(context),),
       ],
     );
   }
@@ -316,11 +308,13 @@ class QuickActionsWidget extends StatelessWidget {
                 _formKey.currentState!.save();
                 final federationService = Provider.of<FederationService>(context, listen: false);
                 
-                // CORREÇÃO: Passar os argumentos como o serviço espera (provavelmente Strings separadas)
+                // ==================== INÍCIO DA CORREÇÃO ====================
+                // Passando o nome e a descrição (do controller da tag) como dois argumentos separados.
                 final newFederation = await federationService.createFederation(
                   nameController.text,
-                  // tagController.text, // Descomente se o serviço aceitar a tag
+                  tagController.text.isNotEmpty ? tagController.text : null,
                 );
+                // ===================== FIM DA CORREÇÃO ======================
 
                 Navigator.of(context).pop();
 
@@ -337,7 +331,6 @@ class QuickActionsWidget extends StatelessWidget {
     );
   }
 
-  // Placeholder Dialog Methods
   void _showPromoteUserDialog(BuildContext context) {
     showDialog(
       context: context,
