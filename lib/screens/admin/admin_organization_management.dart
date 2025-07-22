@@ -35,6 +35,8 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
       final clanService = Provider.of<ClanService>(context, listen: false);
       final federationService = Provider.of<FederationService>(context, listen: false);
 
+      // Assumindo que os serviços foram corrigidos para aceitar paginação,
+      // mas aqui buscamos todos para a tela de admin.
       final List<Clan> clans = await clanService.getAllClans();
       final List<Federation> federations = await federationService.getAllFederations();
 
@@ -60,10 +62,9 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
         _filteredOrganizations = _organizations.where((org) {
           final name = org is Clan ? org.name : (org as Federation).name;
           final tag = org is Clan ? org.tag : (org as Federation).tag;
-          // CORREÇÃO 1: Acessar a propriedade correta do líder
           final leader = org is Clan
-              ? org.leaderId // Clan tem 'leaderId' (String)
-              : (org as Federation).leader.username; // Federation tem 'leader.username'
+              ? org.leaderId
+              : (org as Federation).leader.username;
 
           return name.toLowerCase().contains(query.toLowerCase()) ||
                  (tag?.toLowerCase().contains(query.toLowerCase()) ?? false) ||
@@ -79,7 +80,6 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
       backgroundColor: Colors.black,
       body: Column(
         children: [
-          // Cabeçalho
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -97,10 +97,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
               textAlign: TextAlign.center,
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // Filtros e pesquisa
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -139,19 +136,14 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
                     border: Border.all(color: Colors.grey[600]!),
                   ),
                   child: IconButton(
-                    onPressed: () {
-                      // Filtros avançados
-                    },
+                    onPressed: () {},
                     icon: Icon(Icons.filter_list, color: Colors.grey[400]),
                   ),
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // Lista de organizações
           Expanded(
             child: _isLoading
                 ? const Center(
@@ -190,7 +182,6 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Criar nova organização (clã ou federação)
           _showCreateOrganizationDialog();
         },
         backgroundColor: Colors.blue,
@@ -203,13 +194,11 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
     final bool isClan = organization is Clan;
     final String name = isClan ? organization.name : organization.name;
     final String? tag = isClan ? organization.tag : organization.tag;
-    // CORREÇÃO 2: Acessar a propriedade correta e o tipo correto
     final String? leaderName = isClan
-        ? "ID: ${organization.leaderId}" // Mostra o ID do líder do clã
-        : organization.leader.username; // Mostra o nome de usuário do líder da federação
-    // CORREÇÃO 3: Tratar possível nulidade ao acessar .length
+        ? "ID: ${organization.leaderId}"
+        : organization.leader.username;
     final int memberCount = (isClan ? organization.members?.length : organization.clans.length) ?? 0;
-    final bool isActive = true; // Assumindo que todas as organizações carregadas estão ativas
+    final bool isActive = true;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -225,7 +214,6 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
         children: [
           Row(
             children: [
-              // Ícone da organização
               Container(
                 width: 48,
                 height: 48,
@@ -239,10 +227,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
                   size: 24,
                 ),
               ),
-
               const SizedBox(width: 16),
-
-              // Informações da organização
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,8 +281,6 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
                   ],
                 ),
               ),
-
-              // Status
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -315,10 +298,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // Estatísticas
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -329,15 +309,12 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildStatItem(isClan ? 'Membros' : 'Clãs', '$memberCount', Icons.people),
-                _buildStatItem('Criado', _formatDate(isClan ? organization.createdAt : DateTime.now()), Icons.calendar_today), // Nota: Federation não tem createdAt no modelo
+                _buildStatItem('Criado', _formatDate(isClan ? organization.createdAt : null), Icons.calendar_today),
                 _buildStatItem('Tipo', isClan ? 'CLÃ' : 'FEDERAÇÃO', _getTypeIcon(isClan ? 'clan' : 'federation')),
               ],
             ),
           ),
-
           const SizedBox(height: 12),
-
-          // Ações
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -347,7 +324,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
                 Colors.blue,
                 () => _editOrganization(organization),
               ),
-              if (isClan) // Ação específica para Clãs
+              if (isClan)
                 _buildActionButton(
                   'Associar à Federação',
                   Icons.link,
@@ -464,7 +441,6 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
   }
 
   void _toggleOrganizationStatus(dynamic organization) {
-    // Implementar lógica de ativação/desativação via API
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Alternando status de organização: ${organization is Clan ? organization.name : (organization as Federation).name}'),
@@ -503,7 +479,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
                     backgroundColor: Colors.green,
                   ),
                 );
-                _loadOrganizations(); // Recarrega a lista
+                _loadOrganizations();
               } catch (e) {
                 Logger.error('Erro ao excluir organização: $e');
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -524,7 +500,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
   void _showCreateOrganizationDialog() {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController tagController = TextEditingController();
-    String? selectedType = 'clan'; // Default to clan
+    String? selectedType = 'clan';
 
     showDialog(
       context: context,
@@ -556,7 +532,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
                     enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.grey[600]!)),
                     focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
                   ),
-                  enabled: selectedType == 'clan', // Only enabled for clan
+                  enabled: selectedType == 'clan',
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -595,7 +571,10 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
                 if (selectedType == 'clan') {
                   await Provider.of<ClanService>(context, listen: false).createClan(nameController.text, tagController.text);
                 } else if (selectedType == 'federation') {
-                  await Provider.of<FederationService>(context, listen: false).createFederation(nameController.text);
+                  // ==================== INÍCIO DA CORREÇÃO ====================
+                  // Passando o segundo argumento como null, pois este diálogo não tem campo de descrição.
+                  await Provider.of<FederationService>(context, listen: false).createFederation(nameController.text, null);
+                  // ===================== FIM DA CORREÇÃO ======================
                 }
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -603,7 +582,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
                     backgroundColor: Colors.green,
                   ),
                 );
-                _loadOrganizations(); // Recarrega a lista
+                _loadOrganizations();
               } catch (e) {
                 Logger.error('Erro ao criar organização: $e');
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -679,7 +658,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
                       backgroundColor: Colors.green,
                     ),
                   );
-                  _loadOrganizations(); // Recarrega a lista
+                  _loadOrganizations();
                 } catch (e) {
                   Logger.error('Erro ao associar clã à federação: $e');
                   ScaffoldMessenger.of(context).showSnackBar(
