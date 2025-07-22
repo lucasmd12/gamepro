@@ -6,7 +6,7 @@ import 'package:lucasbeatsfederacao/models/message_model.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart'; // Importação necessária para formatação de data
+import 'package:intl/intl.dart';
 
 class ContextualChatScreen extends StatefulWidget {
   final String chatContext; // e.g., 'global', 'federation_id', 'clan_id'
@@ -22,30 +22,28 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _picker = ImagePicker();
   
-  // Removido _messages = [], pois vamos usar o Consumer para obter os dados do ChatService
-
   @override
   void initState() {
     super.initState();
     _loadMessages();
-    // A chamada para listenToMessages foi ajustada para não esperar um retorno
     Provider.of<ChatService>(context, listen: false).listenToMessages(widget.chatContext, _getChatType());
   }
 
   String _getChatType() {
     if (widget.chatContext == 'global') {
       return 'global';
+    } else if (widget.chatContext.startsWith('federation_')) {
+      return 'federation';
+    } else if (widget.chatContext.startsWith('clan_')) {
+      return 'clan';
     }
-    // Assumindo que o chatContext para federação e clã é o ID deles
-    // A lógica pode precisar de ajuste dependendo do formato exato do chatContext
-    return 'unknown'; 
+    return 'global'; // Default para global se não for reconhecido
   }
 
   void _loadMessages() async {
     final chatService = Provider.of<ChatService>(context, listen: false);
     final chatType = _getChatType();
     try {
-      // Apenas carrega as mensagens, o Consumer cuidará de exibi-las
       await chatService.getMessages(widget.chatContext, chatType);
       _scrollToBottom();
     } catch (e, s) {
@@ -63,8 +61,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
     try {
       await chatService.sendMessage(widget.chatContext, messageContent, chatType, file: file);
       _messageController.clear();
-      _scrollToBottom();
-      // Não é mais necessário chamar _loadMessages, o Consumer e o listener de socket farão a atualização
+      // O scroll para o final será tratado pelo Consumer e o addPostFrameCallback
     } catch (e, s) {
       Logger.error("Erro ao enviar mensagem", error: e, stackTrace: s);
     }
@@ -96,10 +93,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
     });
   }
 
-  // CORREÇÃO APLICADA AQUI:
-  // A função _formatTimestamp foi adicionada dentro da classe.
   String _formatTimestamp(DateTime timestamp) {
-    // Formata a hora como HH:mm
     return DateFormat.Hm().format(timestamp);
   }
 
@@ -133,7 +127,6 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
             child: Consumer<ChatService>(
               builder: (context, chatService, child) {
                 final messages = chatService.getCachedMessagesForEntity(widget.chatContext);
-                // Atualiza o scroll quando a lista de mensagens muda
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
                 return ListView.builder(
                   controller: _scrollController,
@@ -303,7 +296,6 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    // A chamada agora funciona porque o método foi definido
                     _formatTimestamp(message.timestamp),
                     style: const TextStyle(
                       color: Colors.white60,
@@ -334,3 +326,5 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
     );
   }
 }
+
+
