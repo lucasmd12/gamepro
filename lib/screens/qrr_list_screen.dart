@@ -13,7 +13,10 @@ import 'package:lucasbeatsfederacao/services/api_service.dart'; // Importar ApiS
 
 
 class QRRListScreen extends StatefulWidget {
-  const QRRListScreen({super.key});
+  final String? clanId;
+  final String? federationId;
+
+  const QRRListScreen({super.key, this.clanId, this.federationId});
 
   @override
   State<QRRListScreen> createState() => _QRRListScreenState();
@@ -51,7 +54,6 @@ class _QRRListScreenState extends State<QRRListScreen> with TickerProviderStateM
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final currentUser = authProvider.currentUser;
 
-      // ADM_MASTER pode ver todas as QRRs, independentemente do clã
       if (currentUser == null) {
         setState(() {
           _error = 'Usuário não autenticado';
@@ -63,13 +65,20 @@ class _QRRListScreenState extends State<QRRListScreen> with TickerProviderStateM
       final qrrService = QRRService(Provider.of<ApiService>(context, listen: false));
       List<QRRModel> qrrs;
 
-      if (currentUser.role == Role.admMaster) {
-        qrrs = await qrrService.getAllQRRs(); // Supondo que exista um método para obter todas as QRRs
+      if (widget.clanId != null) {
+        qrrs = await qrrService.getQRRsByClan(widget.clanId!); // Usando clanId passado
+      } else if (widget.federationId != null) {
+        // Supondo que exista um método para obter QRRs por federação
+        // Você precisará implementar qrrService.getQRRsByFederation(widget.federationId!)
+        qrrs = []; // Placeholder, implementar a chamada real
+        Logger.warning('Funcionalidade de QRR por Federação não implementada no serviço.');
+      } else if (currentUser.role == Role.admMaster) {
+        qrrs = await qrrService.getAllQRRs(); // ADM_MASTER pode ver todas as QRRs
       } else if (currentUser.clanId != null) {
-        qrrs = await qrrService.getQRRsByClan(currentUser.clanId!); // Usando clanId
+        qrrs = await qrrService.getQRRsByClan(currentUser.clanId!); // Usando clanId do usuário
       } else {
         setState(() {
-          _error = 'Usuário não pertence a um clã e não é ADM Master';
+          _error = 'Usuário não pertence a um clã/federação e não é ADM Master';
           _isLoading = false;
         });
         return;
