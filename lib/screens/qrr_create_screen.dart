@@ -36,6 +36,9 @@ class _QRRCreateScreenState extends State<QRRCreateScreen> {
   String? _selectedEntityType; // 'clan' or 'federation'
   String? _selectedEntityId;
   List<dynamic> _availableEntities = []; // Use dynamic for now, will refine later
+  List<Clan> _availableClansForEnemy = []; // Lista de clãs para seleção de inimigo
+  String? _selectedEnemyClanId;
+  String? _selectedEnemyClanFlagUrl;
 
   bool _isLoading = false;
 
@@ -67,6 +70,7 @@ class _QRRCreateScreenState extends State<QRRCreateScreen> {
         // For admins, fetch all clans and federations
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _fetchAvailableEntities();
+          _fetchAllClansForEnemySelection(); // Fetch all clans for enemy selection
         });
       }
     }
@@ -162,6 +166,8 @@ class _QRRCreateScreenState extends State<QRRCreateScreen> {
         'maxParticipants': _maxParticipantsController.text.isEmpty
             ? null
             : int.tryParse(_maxParticipantsController.text),
+        'enemyClanId': _selectedEnemyClanId, // Adiciona o ID do clã inimigo
+        'enemyClanFlagUrl': _selectedEnemyClanFlagUrl, // Adiciona a URL da bandeira do clã inimigo
       };
 
       // Include either clanId or federationId based on selection or user's affiliation
@@ -211,6 +217,22 @@ class _QRRCreateScreenState extends State<QRRCreateScreen> {
     }
   }
 
+  Future<void> _fetchAllClansForEnemySelection() async {
+    try {
+      final clanService = Provider.of<ClanService>(context, listen: false);
+      final clans = await clanService.getAllClans();
+      if (mounted) {
+        setState(() {
+          _availableClansForEnemy = clans;
+        });
+      }
+    } catch (e) {
+      Logger.error('Erro ao buscar clãs para seleção de inimigo', error: e);
+      if (mounted) {
+        CustomSnackbar.showError(context, 'Erro ao buscar clãs para seleção de inimigo: ${e.toString()}');
+      }
+    }
+  }
 
   Widget _buildTextField({
     required TextEditingController controller,
@@ -304,14 +326,14 @@ class _QRRCreateScreenState extends State<QRRCreateScreen> {
                     const SizedBox(height: 16),
                     // Dropdown para seleção de Clã/Federação (visível para admins)
                     if (_canSelectEntity && !_isLoading)
-                      DropdownButtonFormField<String>(
+                      DropdownButtonFormField<String?>(
                         value: _selectedEntityId,
                         decoration: const InputDecoration(
                           labelText: 'Associar a',
                           border: OutlineInputBorder(),
                         ),
                         items: [
-                          const DropdownMenuItem<String>(
+                          const DropdownMenuItem<String?>(
                             value: null,
                             child: Text('Selecione Clã ou Federação'),
                           ),
@@ -321,7 +343,7 @@ class _QRRCreateScreenState extends State<QRRCreateScreen> {
                             final id = isClan ? entity.id : entity.id; // Assuming both have an 'id'
                             final type = isClan ? 'clan' : 'federation';
 
-                            return DropdownMenuItem<String>(
+                            return DropdownMenuItem<String?>(
                               value: id,
                               child: Text('$name ($type)'),
                               onTap: () {
@@ -348,6 +370,44 @@ class _QRRCreateScreenState extends State<QRRCreateScreen> {
                          ),
                        ),
 
+                    const SizedBox(height: 16),
+                    // Dropdown para seleção de Clã Inimigo (opcional)
+                    DropdownButtonFormField<String?>(
+                      value: _selectedEnemyClanId,
+                      decoration: const InputDecoration(
+                        labelText: 'Clã Inimigo (Opcional)',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Nenhum Clã Inimigo'),
+                        ),
+                        ..._availableClansForEnemy.map((clan) {
+                          return DropdownMenuItem<String?>(
+                            value: clan.id,
+                            child: Text(clan.name),
+                            onTap: () {
+                              setState(() {
+                                _selectedEnemyClanFlagUrl = clan.bannerImageUrl; // Assume bannerImageUrl é a flag
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedEnemyClanId = val;
+                          if (val == null) {
+                            _selectedEnemyClanFlagUrl = null;
+                          } else {
+                            // Encontrar a URL da bandeira do clã selecionado
+                            final selectedClan = _availableClansForEnemy.firstWhere((clan) => clan.id == val);
+                            _selectedEnemyClanFlagUrl = selectedClan.bannerImageUrl; // Assume bannerImageUrl é a flag
+                          }
+                        });
+                      },
+                    ),
                     const SizedBox(height: 16),
                     ListTile(
                       title: Text(_selectedStartTime == null
@@ -410,3 +470,4 @@ class _QRRCreateScreenState extends State<QRRCreateScreen> {
     return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }
+
