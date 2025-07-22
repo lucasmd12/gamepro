@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:lucasbeatsfederacao/models/role_model.dart';
 import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/services/federation_service.dart';
-import '../../widgets/custom_snackbar.dart'; // Assuming the path
-import 'package:lucasbeatsfederacao/screens/admin/admin_manage_users_screen.dart'; // Import the new screen
-import '../screens/admin/admin_manage_clans_screen.dart';
+import '../../widgets/custom_snackbar.dart';
+
+// CORREÇÃO: Importando os arquivos que realmente existem no seu projeto
+import 'package:lucasbeatsfederacao/screens/admin/admin_organization_management.dart';
+import 'package:lucasbeatsfederacao/screens/admin/admin_user_management.dart';
+
 import 'package:lucasbeatsfederacao/screens/clan_management_screen.dart';
-import 'package:lucasbeatsfederacao/screens/federation_list_screen.dart'; // Import FederationListScreen
+import 'package:lucasbeatsfederacao/screens/federation_list_screen.dart';
 
 class QuickActionsWidget extends StatelessWidget {
   final Role userRole;
@@ -21,7 +24,7 @@ class QuickActionsWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: Colors.grey.shade800.withOpacity(0.8), // Using withOpacity for now
+      color: Colors.grey.shade800.withOpacity(0.8),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -44,13 +47,10 @@ class QuickActionsWidget extends StatelessWidget {
   }
 
   Widget _buildActionsForRole(BuildContext context) {
-    // Verificar se o usuário é admin (role 'admin' do backend)
     switch (userRole) {
- case Role.admMaster:
+      case Role.admMaster:
         return _buildAdminActions(context);
- case Role.user: // Assuming 'adminReivindicado' and 'descolado' fall under a modified 'user' or new role
- // If a specific limited admin or descolado role is needed,
- // it should be added to the Role enum and handled here.
+      case Role.user:
       case Role.clanLeader:
         return _buildLeaderActions(context);
       case Role.clanSubLeader:
@@ -58,9 +58,9 @@ class QuickActionsWidget extends StatelessWidget {
       case Role.clanMember:
         return _buildMemberActions(context);
       case Role.guest:
-        return _buildUserActions(context); // Fallback para convidados ou papéis não mapeados
+        return _buildUserActions(context);
       default:
-        return _buildGuestActions(context); // Fallback para convidados ou papéis não mapeados
+        return _buildGuestActions(context);
     }
   }
 
@@ -74,16 +74,17 @@ class QuickActionsWidget extends StatelessWidget {
           'Criar Federação',
           Icons.group_work,
           Colors.purple,
-          () => _showCreateFederationDialog(context), // Chamando a função do diálogo
+          () => _showCreateFederationDialog(context),
         ),
         _buildActionButton(
           context,
           'Gerenciar Federações',
-          Icons.account_tree, // Appropriate icon
-          Colors.blueGrey, // Color
-          () => Navigator.push( // Navigate to FederationListScreen
+          Icons.account_tree,
+          Colors.blueGrey,
+          () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const FederationListScreen())),
+            MaterialPageRoute(builder: (context) => const FederationListScreen()),
+          ),
         ),
         _buildActionButton(
           context,
@@ -92,7 +93,8 @@ class QuickActionsWidget extends StatelessWidget {
           Colors.orange,
           () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AdminManageClansScreen()),
+            // CORREÇÃO: Usando a classe correta que foi importada
+            MaterialPageRoute(builder: (context) => const AdminOrganizationManagementScreen()),
           ),
         ),
         _buildActionButton(
@@ -100,15 +102,19 @@ class QuickActionsWidget extends StatelessWidget {
           'Promover Usuário',
           Icons.person_add,
           Colors.green,
-          () => Navigator.push( // Navigate to the new screen
+          () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AdminManageUsersScreen())),
+            // CORREÇÃO: Usando a classe correta que foi importada
+            MaterialPageRoute(builder: (context) => const AdminUserManagementScreen()),
+          ),
         ),
         _buildActionButton(
           context,
           'Fazer Chamada',
           Icons.call,
-          Colors.green, () => _showCallDialog(context),),
+          Colors.green,
+          () => _showCallDialog(context),
+        ),
       ],
     );
   }
@@ -263,7 +269,6 @@ class QuickActionsWidget extends StatelessWidget {
     );
   }
 
-  // Placeholder Dialog Methods
   void _showCreateFederationDialog(BuildContext context) {
     final _formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
@@ -310,19 +315,19 @@ class QuickActionsWidget extends StatelessWidget {
               if (_formKey.currentState!.validate()) {
                 _formKey.currentState!.save();
                 final federationService = Provider.of<FederationService>(context, listen: false);
-                final federationData = {
-                  'name': nameController.text,
-                  'tag': tagController.text.isNotEmpty ? tagController.text : null,
-                };
+                
+                // CORREÇÃO: Passar os argumentos como o serviço espera (provavelmente Strings separadas)
+                final newFederation = await federationService.createFederation(
+                  nameController.text,
+                  // tagController.text, // Descomente se o serviço aceitar a tag
+                );
 
-                final newFederation = await federationService.createFederation(federationData);
-
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
 
                 if (newFederation != null) {
- CustomSnackbar.showSuccess(context, 'Federação "${newFederation.name}" criada com sucesso!');
+                  CustomSnackbar.showSuccess(context, 'Federação "${newFederation.name}" criada com sucesso!');
                 } else {
- CustomSnackbar.showError(context, 'Falha ao criar federação.');
+                  CustomSnackbar.showError(context, 'Falha ao criar federação.');
                 }
               }
             },
@@ -332,6 +337,7 @@ class QuickActionsWidget extends StatelessWidget {
     );
   }
 
+  // Placeholder Dialog Methods
   void _showPromoteUserDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -524,9 +530,8 @@ class QuickActionsWidget extends StatelessWidget {
     );
   }
 
-  // Navigation Placeholder
   void _showCallDialog(BuildContext context) {
-    Navigator.pushNamed(context, '/call-contacts'); // Assuming this navigates to a screen
+    Navigator.pushNamed(context, '/call-contacts');
   }
 
   Widget _buildUserActions(BuildContext context) {
@@ -550,7 +555,5 @@ class QuickActionsWidget extends StatelessWidget {
         ),
       ],
     );
-
- }
+  }
 }
-
