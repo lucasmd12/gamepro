@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/screens/admin/admin_user_management.dart';
+import 'package:lucasbeatsfederacao/screens/admin/admin_organization_management.dart'; // Importar
 import 'package:lucasbeatsfederacao/screens/admin/admin_system_settings.dart';
 import 'package:lucasbeatsfederacao/screens/admin/admin_reports_screen.dart';
 import 'package:lucasbeatsfederacao/services/stats_service.dart';
@@ -33,8 +34,8 @@ class _AdminMainDashboardState extends State<AdminMainDashboard> {
           _stats = {
             'totalUsers': fetchedStats['totalUsers'] ?? 0,
             'onlineUsers': fetchedStats['onlineUsers'] ?? 0,
-            'totalFederations': fetchedStats['activeFederations'] ?? 0, // Assumindo que o backend retorna 'activeFederations'
-            'totalClans': fetchedStats['activeClans'] ?? 0,
+            'totalFederations': fetchedStats['totalFederations'] ?? 0, // Corrigido para totalFederations
+            'totalClans': fetchedStats['totalClans'] ?? 0, // Corrigido para totalClans
             'activeCalls': fetchedStats['activeCalls'] ?? 0,
             'totalMessages': fetchedStats['totalMessages'] ?? 0,
             'systemHealth': 100.0, // Backend não fornece, manter mock ou remover
@@ -299,11 +300,11 @@ class _AdminMainDashboardState extends State<AdminMainDashboard> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildActionButton(
-                  'Configurações',
-                  Icons.settings,
-                  Colors.grey,
+                  'Gerenciar Organizações',
+                  Icons.account_tree,
+                  Colors.purple,
                   () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminSystemSettingsScreen()));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminOrganizationManagementScreen()));
                   },
                 ),
               ),
@@ -314,7 +315,18 @@ class _AdminMainDashboardState extends State<AdminMainDashboard> {
             children: [
               Expanded(
                 child: _buildActionButton(
-                  'Relatórios',
+                  'Configurações do Sistema',
+                  Icons.settings,
+                  Colors.grey,
+                  () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminSystemSettingsScreen()));
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  'Relatórios e Análises',
                   Icons.analytics,
                   Colors.green,
                   () {
@@ -322,18 +334,39 @@ class _AdminMainDashboardState extends State<AdminMainDashboard> {
                   },
                 ),
               ),
-              const SizedBox(width: 12),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
               Expanded(
                 child: _buildActionButton(
                   'Logs do Sistema',
                   Icons.receipt_long,
-                  Colors.purple,
+                  Colors.cyan,
                   () {
                     // TODO: Implementar navegação para tela de logs do sistema
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Funcionalidade de Logs do Sistema em desenvolvimento.'),
                         backgroundColor: Colors.blue,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  'Gerenciar Convites',
+                  Icons.mail,
+                  Colors.orange,
+                  () {
+                    // TODO: Implementar navegação para tela de gerenciamento de convites
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Funcionalidade de Gerenciamento de Convites em desenvolvimento.'),
+                        backgroundColor: Colors.orange,
                       ),
                     );
                   },
@@ -443,9 +476,5 @@ class _AdminMainDashboardState extends State<AdminMainDashboard> {
     );
   }
 }
-
-
-
-
 
 
