@@ -3,8 +3,8 @@ import 'package:lucasbeatsfederacao/models/role_model.dart';
 import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/services/federation_service.dart';
 import '../../widgets/custom_snackbar.dart'; // Assuming the path
-import 'package:lucasbeatsfederacao/screens/admin_manage_users_screen.dart'; // Import the new screen
-import '../screens/admin_manage_clans_screen.dart';
+import 'package:lucasbeatsfederacao/screens/admin/admin_manage_users_screen.dart'; // Import the new screen
+import '../screens/admin/admin_manage_clans_screen.dart';
 import 'package:lucasbeatsfederacao/screens/clan_management_screen.dart';
 import 'package:lucasbeatsfederacao/screens/federation_list_screen.dart'; // Import FederationListScreen
 
@@ -58,7 +58,7 @@ class QuickActionsWidget extends StatelessWidget {
       case Role.clanMember:
         return _buildMemberActions(context);
       case Role.guest:
-        return _buildUserActions(context);
+        return _buildUserActions(context); // Fallback para convidados ou papéis não mapeados
       default:
         return _buildGuestActions(context); // Fallback para convidados ou papéis não mapeados
     }
@@ -91,9 +91,9 @@ class QuickActionsWidget extends StatelessWidget {
           Icons.groups,
           Colors.orange,
           () => Navigator.push(
- context,
- MaterialPageRoute(builder: (context) => const AdminManageClansScreen()),
- ),
+            context,
+            MaterialPageRoute(builder: (context) => const AdminManageClansScreen()),
+          ),
         ),
         _buildActionButton(
           context,
@@ -553,3 +553,4 @@ class QuickActionsWidget extends StatelessWidget {
 
  }
 }
+
