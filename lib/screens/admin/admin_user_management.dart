@@ -14,35 +14,76 @@ class AdminUserManagementScreen extends StatefulWidget {
 
 class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   List<User> _users = [];
   List<User> _filteredUsers = [];
   bool _isLoading = true;
+  bool _isFetchingMore = false;
+  bool _hasMore = true;
   String? _errorMessage;
+  int _currentPage = 1;
+  final int _limit = 20; // Número de usuários por página
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent && _hasMore && !_isFetchingMore) {
+        _loadMoreUsers();
+      }
+    });
   }
 
   Future<void> _loadUsers() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _currentPage = 1; // Resetar página ao recarregar
+      _users = []; // Limpar usuários existentes
+      _filteredUsers = [];
+      _hasMore = true;
     });
     try {
       final userService = Provider.of<UserService>(context, listen: false);
-      final fetchedUsers = await userService.getAllUsers();
+      final fetchedUsers = await userService.getAllUsers(page: _currentPage, limit: _limit);
       setState(() {
         _users = fetchedUsers;
         _filteredUsers = List.from(_users);
         _isLoading = false;
+        _hasMore = fetchedUsers.length == _limit; // Se o número de usuários for menor que o limite, não há mais páginas
       });
     } catch (e) {
       Logger.error('Erro ao carregar usuários: $e');
       setState(() {
         _errorMessage = 'Falha ao carregar usuários: ${e.toString()}';
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMoreUsers() async {
+    if (!_hasMore || _isFetchingMore) return;
+
+    setState(() {
+      _isFetchingMore = true;
+    });
+
+    _currentPage++;
+    try {
+      final userService = Provider.of<UserService>(context, listen: false);
+      final newUsers = await userService.getAllUsers(page: _currentPage, limit: _limit);
+      setState(() {
+        _users.addAll(newUsers);
+        _filteredUsers = List.from(_users.where((user) => user.username.toLowerCase().contains(_searchController.text.toLowerCase()) || (user.clanName?.toLowerCase().contains(_searchController.text.toLowerCase()) ?? false)));
+        _hasMore = newUsers.length == _limit;
+        _isFetchingMore = false;
+      });
+    } catch (e) {
+      Logger.error('Erro ao carregar mais usuários: $e');
+      setState(() {
+        _isFetchingMore = false;
+        // Não setar _errorMessage aqui para não sobrescrever o erro principal, se houver
       });
     }
   }
@@ -145,9 +186,16 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                                 style: TextStyle(color: Colors.white)),
                           )
                         : ListView.builder(
+                            controller: _scrollController,
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: _filteredUsers.length,
+                            itemCount: _filteredUsers.length + (_hasMore ? 1 : 0), // Adiciona 1 para o indicador de carregamento
                             itemBuilder: (context, index) {
+                              if (index == _filteredUsers.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                                  child: Center(child: CircularProgressIndicator(color: Colors.blue)),
+                                );
+                              }
                               final user = _filteredUsers[index];
                               return _buildUserCard(user);
                             },
@@ -400,6 +448,9 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 }
+
+
