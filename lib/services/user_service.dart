@@ -86,6 +86,35 @@ class UserService {
       return false;
     }
   }
+
+  Future<User?> updateUserProfile(String userId, {String? username, String? avatar}) async {
+    try {
+      final Map<String, dynamic> dataToUpdate = {};
+      if (username != null) dataToUpdate['username'] = username;
+      if (avatar != null) dataToUpdate['avatar'] = avatar;
+
+      if (dataToUpdate.isEmpty) {
+        Logger.info('No profile data provided to update for user $userId.');
+        return null; // Or return current user if no changes
+      }
+
+      final response = await _apiService.put(
+        '/api/users/$userId',
+        dataToUpdate,
+        requireAuth: true,
+      );
+
+      if (response != null && response['success'] == true && response['data'] != null) {
+        return User.fromJson(response['data']);
+      } else {
+        Logger.warning('Failed to update user profile for $userId. Response: $response');
+        return null;
+      }
+    } catch (e, st) {
+      Logger.error('Error updating user profile for $userId', error: e, stackTrace: st);
+      return null;
+    }
+  }
 }
 
 
