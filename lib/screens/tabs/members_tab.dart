@@ -13,7 +13,7 @@ import 'package:lucasbeatsfederacao/services/socket_service.dart'; // Import Soc
 import 'package:lucasbeatsfederacao/widgets/member_list_item.dart';
 import 'dart:async'; // Import for StreamSubscription
 
-class MembersTab extends StatefulWidget { 
+class MembersTab extends StatefulWidget {
   final String clanId;
 
   final Clan clan; // Adicionado
@@ -73,7 +73,7 @@ class _MembersTabState extends State<MembersTab> {
       final clanService = Provider.of<ClanService>(context, listen: false);
 
       final members = await clanService.getClanMembers(widget.clanId);
-      
+
       if (mounted) {
         setState(() {
           _members = members;
@@ -152,33 +152,36 @@ class _MembersTabState extends State<MembersTab> {
     final username = _inviteUsernameController.text.trim();
     if (username.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Por favor, insira um nome de usuário.")), 
+        const SnackBar(content: Text("Por favor, insira um nome de usuário.")),
       );
       return;
     }
 
     try {
-      final apiService = Provider.of<ApiService>(context, listen: false); // Obtain ApiService via Provider
-      final userService = UserService(apiService); // Pass apiService to the constructor
-      final user = await userService.getUserByUsername(username); // Buscar usuário pelo username
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final userService = UserService(apiService);
+      final user = await userService.getUserByUsername(username);
 
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Usuário com este nome de usuário não encontrado.")), 
+          const SnackBar(content: Text("Usuário com este nome de usuário não encontrado.")),
         );
         return;
       }
 
-      final inviteService = InviteService();
-      await inviteService.createInvite(user.id, 'clan', widget.clanId); // Usar o ID do usuário encontrado
+      // ✅✅✅ CORREÇÃO APLICADA AQUI ✅✅✅
+      // Agora estamos passando o 'apiService' para o construtor do 'InviteService'.
+      final inviteService = InviteService(apiService);
+      await inviteService.createInvite(user.id, 'clan', widget.clanId);
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Convite enviado com sucesso!')), 
+        const SnackBar(content: Text('Convite enviado com sucesso!')),
       );
       _inviteUsernameController.clear();
     } catch (e) {
       Logger.error('Erro ao enviar convite', error: e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar convite: ${e.toString()}')), 
+        SnackBar(content: Text('Erro ao enviar convite: ${e.toString()}')),
       );
     }
   }
@@ -203,15 +206,15 @@ class _MembersTabState extends State<MembersTab> {
   void _promoteMember(Member member) async {
     try {
       final clanService = Provider.of<ClanService>(context, listen: false);
-      await clanService.promoteMember(member.id); 
+      await clanService.promoteMember(member.id);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Membro ${member.username} promovido com sucesso!')), 
+        SnackBar(content: Text('Membro ${member.username} promovido com sucesso!')),
       );
       _loadMembers();
     } catch (e) {
       Logger.error('Erro ao promover membro', error: e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao promover membro: ${e.toString()}')), 
+        SnackBar(content: Text('Erro ao promover membro: ${e.toString()}')),
       );
     }
   }
@@ -219,15 +222,15 @@ class _MembersTabState extends State<MembersTab> {
   void _demoteMember(Member member) async {
     try {
       final clanService = Provider.of<ClanService>(context, listen: false);
-      await clanService.demoteMember(member.id); 
+      await clanService.demoteMember(member.id);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Membro ${member.username} rebaixado com sucesso!')), 
+        SnackBar(content: Text('Membro ${member.username} rebaixado com sucesso!')),
       );
       _loadMembers();
     } catch (e) {
       Logger.error('Erro ao rebaixar membro', error: e);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao rebaixar membro: ${e.toString()}')), 
+        SnackBar(content: Text('Erro ao rebaixar membro: ${e.toString()}')),
       );
     }
   }
@@ -248,15 +251,15 @@ class _MembersTabState extends State<MembersTab> {
               Navigator.pop(context);
               try {
                 final clanService = Provider.of<ClanService>(context, listen: false);
-                await clanService.removeMember(member.id); 
+                await clanService.removeMember(member.id);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Membro ${member.username} removido com sucesso!')), 
+                  SnackBar(content: Text('Membro ${member.username} removido com sucesso!')),
                 );
                 _loadMembers();
               } catch (e) {
                 Logger.error('Erro ao remover membro', error: e);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Erro ao remover membro: ${e.toString()}')), 
+                  SnackBar(content: Text('Erro ao remover membro: ${e.toString()}')),
                 );
               }
             },
@@ -270,7 +273,7 @@ class _MembersTabState extends State<MembersTab> {
   void _sendMessage(Member member) {
     // Implementar envio de mensagem
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Enviar mensagem para ${member.username} - Em desenvolvimento')), 
+      SnackBar(content: Text('Enviar mensagem para ${member.username} - Em desenvolvimento')),
     );
   }
 
@@ -279,7 +282,7 @@ class _MembersTabState extends State<MembersTab> {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final currentUser = authProvider.currentUser;
-        
+
         if (_isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -371,7 +374,7 @@ class _MembersTabState extends State<MembersTab> {
                       hintStyle: TextStyle(color: Colors.grey.shade400),
                       prefixIcon: Icon(Icons.search, color: Colors.grey.shade400),
                       filled: true,
-                      fillColor: Colors.grey.shade800.withValues(alpha: 0.8),
+                      fillColor: Colors.grey.shade800.withOpacity(0.8),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -381,13 +384,13 @@ class _MembersTabState extends State<MembersTab> {
                 ],
               ),
             ),
-            
+
             // Estatísticas rápidas
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade800.withValues(alpha: 0.8),
+                color: Colors.grey.shade800.withOpacity(0.8),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -411,9 +414,9 @@ class _MembersTabState extends State<MembersTab> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Lista de membros
             Expanded(
               child: _filteredMembers.isEmpty
@@ -494,5 +497,3 @@ class _MembersTabState extends State<MembersTab> {
     );
   }
 }
-
-
