@@ -3,10 +3,19 @@ import 'package:lucasbeatsfederacao/models/invite_model.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 
 class InviteService {
-  final ApiService _apiService = ApiService();
+  // 1. REMOVIDO: Não vamos mais criar a instância aqui.
+  // final ApiService _apiService = ApiService();
+
+  // 2. ADICIONADO: Uma variável final para armazenar o ApiService que será recebido.
+  final ApiService _apiService;
+
+  // 3. ADICIONADO: O construtor que recebe o ApiService.
+  //    É isso que vai resolver o erro de compilação.
+  InviteService(this._apiService);
 
   Future<List<InviteModel>> getMyInvites() async {
     try {
+      // O resto do código funciona perfeitamente, sem necessidade de alteração.
       final response = await _apiService.get('/api/invites/me');
       if (response['success'] == true) {
         return (response['invites'] as List)
@@ -61,5 +70,3 @@ class InviteService {
     }
   }
 }
-
-
