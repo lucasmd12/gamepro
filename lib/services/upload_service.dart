@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:lucasbeatsfederacao/utils/constants.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
-import 'package:lucasbeatsfederacao/services/cache_service.dart';
+import 'package.lucasbeatsfederacao/services/cache_service.dart';
 
 class UploadService {
   final String _baseUrl = backendBaseUrl;
@@ -33,7 +33,8 @@ class UploadService {
     try {
       Logger.info('Iniciando upload de avatar...');
       
-      final url = Uri.parse('$_baseUrl/api/upload/avatar');
+      // ✅✅✅ CORREÇÃO: A URL foi alterada para a rota correta do backend ✅✅✅
+      final url = Uri.parse('$_baseUrl/api/upload/profile-picture');
       final request = http.MultipartRequest('POST', url);
       
       // Adicionar headers de autenticação
@@ -41,13 +42,14 @@ class UploadService {
       request.headers.addAll(headers);
       
       // Adicionar arquivo
+      // O backend espera o campo 'profilePicture' conforme definido no uploadController.js
       final multipartFile = await http.MultipartFile.fromPath(
-        'avatar',
+        'profilePicture', 
         imageFile.path,
       );
       request.files.add(multipartFile);
       
-      Logger.info('Enviando arquivo de avatar: ${imageFile.path}');
+      Logger.info('Enviando arquivo de avatar para: $url');
       
       // Enviar requisição
       final streamedResponse = await request.send().timeout(_uploadTimeout);
@@ -334,7 +336,7 @@ class UploadService {
       Logger.error('Exceção ao listar arquivos: ${e.toString()}');
       return {
         'success': false,
-        'message': 'Erro interno: ${e.toString()}'
+        'message': 'Erro interno no upload: ${e.toString()}'
       };
     }
   }
@@ -495,5 +497,3 @@ class UploadService {
     }
   }
 }
-
-
