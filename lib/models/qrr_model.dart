@@ -5,8 +5,8 @@ enum QRRType {
   mission("Missão"),
   event("Evento"),
   training("Treinamento"),
- operation("Operação"),
- rule("Regra");
+  operation("Operação"),
+  rule("Regra");
 
   final String displayName;
   const QRRType(this.displayName);
@@ -21,8 +21,8 @@ enum QRRType {
         return Icons.fitness_center;
       case QRRType.operation:
         return Icons.precision_manufacturing;
- case QRRType.rule:
- return Icons.gavel;
+      case QRRType.rule:
+        return Icons.gavel;
     }
   }
 }
@@ -103,6 +103,8 @@ class QRRModel {
   final String? imageUrl; // Adicionado como propriedade para evitar 'this' em getter
   final Duration? duration; // Adicionado como propriedade para evitar 'this' em getter
   final List<String>? requiredRoles; // Adicionado como propriedade para evitar 'this' em getter
+  final String? enemyClanId; // Novo campo
+  final String? enemyClanFlagUrl; // Novo campo
 
   QRRModel({
     required this.id,
@@ -129,6 +131,8 @@ class QRRModel {
     this.imageUrl, // Inicializado no construtor
     this.duration, // Inicializado no construtor
     this.requiredRoles, // Inicializado no construtor
+    this.enemyClanId, // Inicializado no construtor
+    this.enemyClanFlagUrl, // Inicializado no construtor
   });
 
   factory QRRModel.fromJson(Map<String, dynamic> json) {
@@ -219,9 +223,11 @@ class QRRModel {
       endTime: parsedEndTime,
       maxParticipants: json["maxParticipants"] as int?,
       result: (QRRStatus.values.firstWhere((e) => e.name == json["status"] as String)).isCompleted ? 'Concluída com sucesso' : null,
-      imageUrl: null, // Placeholder
+      imageUrl: json["imageUrl"] as String?, // Usar o campo real do JSON
       duration: calculatedDuration,
-      requiredRoles: null, // Placeholder
+      requiredRoles: (json["requiredRoles"] as List<dynamic>?)?.map((e) => e as String).toList(), // Usar o campo real do JSON
+      enemyClanId: json["enemyClanId"] as String?,
+      enemyClanFlagUrl: json["enemyClanFlagUrl"] as String?,
     );
   }
 
@@ -266,6 +272,10 @@ class QRRModel {
       if (startTime != null) 'startTime': startTime!.toIso8601String(),
       if (endTime != null) 'endTime': endTime!.toIso8601String(),
       if (maxParticipants != null) 'maxParticipants': maxParticipants,
+      if (imageUrl != null) 'imageUrl': imageUrl,
+      if (requiredRoles != null) 'requiredRoles': requiredRoles,
+      if (enemyClanId != null) 'enemyClanId': enemyClanId,
+      if (enemyClanFlagUrl != null) 'enemyClanFlagUrl': enemyClanFlagUrl,
     };
   }
 
@@ -303,5 +313,7 @@ class QRRModel {
     return !status.isCompleted && now.isAfter(endDate);
   }
 }
+
+
 
 
