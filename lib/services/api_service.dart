@@ -10,11 +10,10 @@ class ApiService {
   String get baseUrl => _baseUrl;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   
-  // Timeout aumentado para lidar com cold start do Render.com
   static const Duration _defaultTimeout = Duration(seconds: 90);
   static const Duration _shortTimeout = Duration(seconds: 30);
 
-  Future<String?> getToken() async { // Alterado para público
+  Future<String?> getToken() async {
     return await _secureStorage.read(key: 'jwt_token');
   }
 
@@ -27,13 +26,30 @@ class ApiService {
       'Content-Type': 'application/json; charset=UTF-8',
     };
     if (includeAuth) {
-      final token = await getToken(); // Usando o método público
+      final token = await getToken();
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
     }
     return headers;
   }
+
+  // ==================== INÍCIO DA CORREÇÃO ====================
+  // Função helper para garantir que a URL seja construída corretamente
+  Uri _buildUrl(String endpoint, [Map<String, dynamic>? queryParams]) {
+    // Garante que a baseUrl não tenha uma barra no final
+    final baseUrl = _baseUrl.endsWith('/') ? _baseUrl.substring(0, _baseUrl.length - 1) : _baseUrl;
+    // Garante que o endpoint comece com uma barra
+    final path = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    
+    final url = Uri.parse('$baseUrl$path');
+
+    if (queryParams != null && queryParams.isNotEmpty) {
+      return url.replace(queryParameters: queryParams.map((key, value) => MapEntry(key, value.toString())));
+    }
+    return url;
+  }
+  // ===================== FIM DA CORREÇÃO ======================
 
   dynamic _handleResponse(http.Response response) {
     final statusCode = response.statusCode;
@@ -94,7 +110,7 @@ class ApiService {
         attempts++;
         if (e.toString().contains('TimeoutException') && attempts <= maxRetries) {
           Logger.warning('Request timeout, retrying... (attempt $attempts/$maxRetries)');
-          await Future.delayed(Duration(seconds: 2 * attempts)); // Backoff progressivo
+          await Future.delayed(Duration(seconds: 2 * attempts));
           continue;
         }
         rethrow;
@@ -104,13 +120,7 @@ class ApiService {
   }
 
   Future<dynamic> get(String endpoint, {bool requireAuth = true, Duration? timeout, Map<String, dynamic>? queryParams}) async {
-    Uri url;
-    if (queryParams != null && queryParams.isNotEmpty) {
-      url = Uri.parse('$_baseUrl$endpoint').replace(queryParameters: queryParams.map((key, value) => MapEntry(key, value.toString())));
-    } else {
-      url = Uri.parse('$_baseUrl$endpoint');
-    }
-
+    final url = _buildUrl(endpoint, queryParams); // Usando a função helper
     Logger.info('API GET Request: $url');
 
     final transaction = Sentry.startTransaction(
@@ -157,7 +167,7 @@ class ApiService {
   }
 
   Future<dynamic> post(String endpoint, Map<String, dynamic> data, {bool requireAuth = true, Duration? timeout}) async {
-    final url = Uri.parse('$_baseUrl$endpoint');
+    final url = _buildUrl(endpoint); // Usando a função helper
     Logger.info('API POST Request: $url, Data: ${jsonEncode(data)}');
 
     final transaction = Sentry.startTransaction(
@@ -206,8 +216,8 @@ class ApiService {
   }
 
   Future<dynamic> put(String endpoint, Map<String, dynamic> data, {bool requireAuth = true, Duration? timeout}) async {
- print('DEBUG: Entering ApiService.put for endpoint: $endpoint'); // Linha adicionada
-    final url = Uri.parse('$_baseUrl$endpoint');
+    print('DEBUG: Entering ApiService.put for endpoint: $endpoint');
+    final url = _buildUrl(endpoint); // Usando a função helper
     Logger.info('API PUT Request: $url, Data: ${jsonEncode(data)}');
 
     final transaction = Sentry.startTransaction(
@@ -256,7 +266,7 @@ class ApiService {
   }
 
   Future<dynamic> patch(String endpoint, Map<String, dynamic> data, {bool requireAuth = true, Duration? timeout}) async {
-    final url = Uri.parse('$_baseUrl$endpoint');
+    final url = _buildUrl(endpoint); // Usando a função helper
     Logger.info('API PATCH Request: $url, Data: ${jsonEncode(data)}');
 
     final transaction = Sentry.startTransaction(
@@ -305,7 +315,7 @@ class ApiService {
   }
 
   Future<dynamic> delete(String endpoint, {bool requireAuth = true, Duration? timeout}) async {
-    final url = Uri.parse('$_baseUrl$endpoint');
+    final url = _buildUrl(endpoint); // Usando a função helper
     Logger.info('API DELETE Request: $url');
 
     final transaction = Sentry.startTransaction(
@@ -351,9 +361,8 @@ class ApiService {
     }
   }
 
-  // Método para manter o servidor vivo (ping)
   Future<void> keepServerAlive() async {
-    final url = Uri.parse('$_baseUrl/api/keep-alive');
+    final url = _buildUrl('/api/keep-alive'); // Usando a função helper
     try {
       await http.get(url).timeout(_shortTimeout);
       Logger.info('Server keep-alive ping successful.');
@@ -362,5 +371,3 @@ class ApiService {
     }
   }
 }
-
-
