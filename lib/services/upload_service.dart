@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:lucasbeatsfederacao/utils/constants.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
-import 'package.lucasbeatsfederacao/services/cache_service.dart';
+import 'package:lucasbeatsfederacao/services/cache_service.dart';
+';
 
 class UploadService {
   final String _baseUrl = backendBaseUrl;
