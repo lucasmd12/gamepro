@@ -8,6 +8,7 @@ import 'package:lucasbeatsfederacao/screens/tabs/members_tab.dart';
 import 'package:lucasbeatsfederacao/screens/tabs/settings_tab.dart';
 import 'package:lucasbeatsfederacao/services/clan_service.dart'; // Importar ClanService
 import 'package:lucasbeatsfederacao/utils/logger.dart'; // Importar Logger
+import 'package:lucasbeatsfederacao/screens/qrr_list_screen.dart'; // Importar QRRListScreen
 
 class ClanManagementScreen extends StatefulWidget {
   final String clanId;
@@ -15,31 +16,28 @@ class ClanManagementScreen extends StatefulWidget {
   const ClanManagementScreen({super.key, required this.clanId});
 
   @override
-  State<ClanManagementScreen> createState() => _ClanManagementScreenState(); // Corrigido
+  State<ClanManagementScreen> createState() => _ClanManagementScreenState();
 }
 
 class _ClanManagementScreenState extends State<ClanManagementScreen> with TickerProviderStateMixin {
   late TabController _tabController;
-  // Adicionadas as variáveis de estado para o clã
-  Clan? _clan; 
+  Clan? _clan;
   bool _isLoadingClan = true;
-
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this); // Definido length para 3
-    _loadClanDetails(); // Carregar detalhes do clã
+    _tabController = TabController(length: 4, vsync: this); // Definido length para 4
+    _loadClanDetails();
   }
 
-  // Função para carregar detalhes do clã
   Future<void> _loadClanDetails() async {
     try {
       final clanService = Provider.of<ClanService>(context, listen: false);
       final clanDetails = await clanService.getClanDetails(widget.clanId);
       if (mounted) {
         setState(() {
-          _clan = clanDetails; // Atribui o clã carregado
+          _clan = clanDetails;
           _isLoadingClan = false;
         });
       }
@@ -65,7 +63,6 @@ class _ClanManagementScreenState extends State<ClanManagementScreen> with Ticker
       builder: (context, authProvider, child) {
         final currentUser = authProvider.currentUser;
         
-        // Verificar se o usuário é líder de clã, admin de federação ou admin geral
         if (currentUser?.role != Role.clanLeader && currentUser?.role != Role.admMaster && currentUser?.role != Role.federationLeader) {
          return Scaffold(
             appBar: AppBar(
@@ -124,6 +121,7 @@ class _ClanManagementScreenState extends State<ClanManagementScreen> with Ticker
               tabs: const [
                 Tab(text: 'Dashboard', icon: Icon(Icons.dashboard, size: 16)),
                 Tab(text: 'Membros', icon: Icon(Icons.people, size: 16)),
+                Tab(text: 'Missões QRR', icon: Icon(Icons.military_tech, size: 16)), // Nova aba
                 Tab(text: 'Configurações', icon: Icon(Icons.settings, size: 16)),
               ],
             ),
@@ -140,19 +138,19 @@ class _ClanManagementScreenState extends State<ClanManagementScreen> with Ticker
               ),
             ),
             child: TabBarView(
-              controller: _tabController, // Mantém o controller
-              // Exibe indicador de carregamento ou o conteúdo
+              controller: _tabController,
               children: _isLoadingClan 
-                  ? [const Center(child: CircularProgressIndicator())] 
+                  ? [const Center(child: CircularProgressIndicator()), const Center(child: CircularProgressIndicator()), const Center(child: CircularProgressIndicator()), const Center(child: CircularProgressIndicator())] 
                   : _clan == null 
-                      ? [const Center(child: Text('Clã não encontrado', style: TextStyle(color: Colors.white)))]
+                      ? [const Center(child: Text('Clã não encontrado', style: TextStyle(color: Colors.white))), const Center(child: Text('Clã não encontrado', style: TextStyle(color: Colors.white))), const Center(child: Text('Clã não encontrado', style: TextStyle(color: Colors.white))), const Center(child: Text('Clã não encontrado', style: TextStyle(color: Colors.white)))]
                       : [
-                          ClanInfoWidget(clanId: widget.clanId), // Mantém este widget
-                          MembersTab(clanId: widget.clanId, clan: _clan!), // Passa o objeto clan
-                          SettingsTab(clanId: widget.clanId), // Não passa o objeto clan
+                          ClanInfoWidget(clanId: widget.clanId),
+                          MembersTab(clanId: widget.clanId, clan: _clan!),
+                          QRRListScreen(clanId: widget.clanId), // Passando clanId para QRRListScreen
+                          SettingsTab(clanId: widget.clanId),
                         ],
             ),
-            ),
+          ),
         );
       },
     );
