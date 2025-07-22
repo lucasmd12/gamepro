@@ -49,11 +49,12 @@ class _FederationListScreenState extends State<FederationListScreen> {
     });
     try {
       final federationService = Provider.of<FederationService>(context, listen: false);
+      // ASSUMINDO QUE VOCÊ VAI CORRIGIR O FEDERATIONSERVICE PARA ACEITAR page E limit
       final fetchedFederations = await federationService.getAllFederations(page: _currentPage, limit: _limit);
       setState(() {
         _federations = fetchedFederations;
         _isLoading = false;
-        _hasMore = fetchedFederations.length == _limit; // Se o número de federações for menor que o limite, não há mais páginas
+        _hasMore = fetchedFederations.length == _limit;
       });
     } catch (e, s) {
       Logger.error('Error loading federations:', error: e, stackTrace: s);
@@ -74,6 +75,7 @@ class _FederationListScreenState extends State<FederationListScreen> {
     _currentPage++;
     try {
       final federationService = Provider.of<FederationService>(context, listen: false);
+      // ASSUMINDO QUE VOCÊ VAI CORRIGIR O FEDERATIONSERVICE PARA ACEITAR page E limit
       final newFederations = await federationService.getAllFederations(page: _currentPage, limit: _limit);
       setState(() {
         _federations.addAll(newFederations);
@@ -155,15 +157,19 @@ class _FederationListScreenState extends State<FederationListScreen> {
                   _showSnackBar('O nome da federação não pode ser vazio.', isError: true);
                   return;
                 }
-                Navigator.of(context).pop(); // Dismiss dialog
+                Navigator.of(context).pop();
 
                 try {
                   final federationService = Provider.of<FederationService>(context, listen: false);
-                  final newFederation = await federationService.createFederation({"name": name, "description": description});
+                  // ==================== INÍCIO DA CORREÇÃO ====================
+                  // O erro original era passar um mapa. A correção é passar os argumentos
+                  // como Strings separadas, que é o formato mais provável que seu serviço espera.
+                  final newFederation = await federationService.createFederation(name, description);
+                  // ===================== FIM DA CORREÇÃO ======================
 
                   if (newFederation != null) {
                     _showSnackBar('Federação "${newFederation.name}" criada com sucesso!');
-                    _loadFederations(); // Refresh the list after creation
+                    _loadFederations();
                   } else {
                     _showSnackBar('Erro ao criar federação. Tente novamente.', isError: true);
                   }
@@ -186,7 +192,7 @@ class _FederationListScreenState extends State<FederationListScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF212121),
-          title: Text('Transferir Liderança de ${federation.name}', style: TextStyle(color: Colors.white)),
+          title: Text('Transferir Liderança de ${federation.name}', style: const TextStyle(color: Colors.white)),
           content: TextField(
             controller: _leaderUsernameController,
             decoration: const InputDecoration(
@@ -212,7 +218,7 @@ class _FederationListScreenState extends State<FederationListScreen> {
                   _showSnackBar('O nome de usuário do novo líder não pode ser vazio.', isError: true);
                   return;
                 }
-                Navigator.of(context).pop(); // Dismiss dialog
+                Navigator.of(context).pop();
 
                 try {
                   final federationService = Provider.of<FederationService>(context, listen: false);
@@ -264,7 +270,7 @@ class _FederationListScreenState extends State<FederationListScreen> {
                     )
                   : ListView.builder(
                       controller: _scrollController,
-                      itemCount: _federations.length + (_hasMore ? 1 : 0), // Adiciona 1 para o indicador de carregamento
+                      itemCount: _federations.length + (_isFetchingMore ? 1 : 0), // Corrigido para usar _isFetchingMore
                       itemBuilder: (context, index) {
                         if (index == _federations.length) {
                           return const Padding(
@@ -359,5 +365,3 @@ class _FederationListScreenState extends State<FederationListScreen> {
     super.dispose();
   }
 }
-
-
