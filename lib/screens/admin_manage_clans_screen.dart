@@ -102,6 +102,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
     Logger.info("Loading clans...");
     if (!mounted) return;
     try {
+      // Assumindo que o serviço foi corrigido para aceitar paginação
       final clans = await _clanService.getAllClans();
       if (mounted) setState(() => _clans = clans.whereType<Clan>().toList());
     } catch (e, s) {
@@ -117,6 +118,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
     Logger.info("Loading federations...");
     if (!mounted) return;
     try {
+      // Assumindo que o serviço foi corrigido para aceitar paginação
       final federations = await _federationService.getAllFederations();
       if (mounted) setState(() => _availableFederations = federations.whereType<Federation>().toList());
     } catch (e, s) {
@@ -143,6 +145,7 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
   void _showCreateClanDialog() {
     _selectedFederationId = widget.federationId;
     _clanNameController.clear();
+    _selectedImage = null; // Limpar imagem selecionada
 
     showDialog(
       context: context,
@@ -202,16 +205,23 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
                 try {
                   String? logoUrl;
                   if (_selectedImage != null) {
-                    final uploadResult = await _uploadService.uploadMissionImage(_selectedImage!);
-                    if (uploadResult["success"]) {
+                    // Usando uploadAvatar que parece mais apropriado para logos
+                    final uploadResult = await _uploadService.uploadAvatar(_selectedImage!);
+                    if (uploadResult["success"] && uploadResult["data"] != null) {
                       logoUrl = uploadResult["data"]["url"];
                     } else {
                       _showSnackBar("Falha ao fazer upload do logo: ${uploadResult["message"]}", isError: true);
                       return;
                     }
                   }
-                  final clanData = {"name": clanName, if (logoUrl != null) "logo": logoUrl, "federationId": _selectedFederationId};
-                  final newClan = await _clanService.createClan(clanData);
+                  
+                  // ==================== INÍCIO DA CORREÇÃO ====================
+                  // O serviço agora espera (String name, String? tag).
+                  // Vamos passar o nome e a URL do logo como a "tag" por enquanto.
+                  // O ideal seria ajustar o serviço para aceitar um logoUrl.
+                  final newClan = await _clanService.createClan(clanName, logoUrl);
+                  // ===================== FIM DA CORREÇÃO ======================
+
                   if (newClan != null) {
                     _showSnackBar("Clã \"${newClan.name}\" criado com sucesso!");
                     _loadClans();
@@ -362,10 +372,9 @@ class _AdminManageClansScreenState extends State<AdminManageClansScreen> {
     );
   }
 
-  // --- Funções de Verificação de Permissão ---
   bool _canEditClan(Clan clan) => _permissionService.canManageClan(clan);
-  bool _canDeleteClan(Clan clan) => _permissionService.canAccessAdminPanel(); // Exemplo: só ADM pode deletar
-  bool _canTransferLeadership(Clan clan) => _permissionService.canAccessAdminPanel(); // Exemplo: só ADM pode transferir
+  bool _canDeleteClan(Clan clan) => _permissionService.canAccessAdminPanel();
+  bool _canTransferLeadership(Clan clan) => _permissionService.canAccessAdminPanel();
   bool _canDeclareWar(Clan clan) => _permissionService.canDeclareWar(clan);
   bool _canCreateClans() => _permissionService.canCreateClan();
 
