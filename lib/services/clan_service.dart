@@ -302,13 +302,13 @@ class ClanService with ChangeNotifier {
     return null;
   }
 
-   Future<Clan?> createClan(Map<String, dynamic> clanData) async {
-    Logger.info('Attempting to create clan with data: $clanData');
+   Future<Clan?> createClan(String name, String tag) async {
+    Logger.info('Attempting to create clan with name: $name, tag: $tag');
     try {
-      final response = await _apiService.post('/api/clans', clanData, requireAuth: true);
-      if (response != null && response['success'] == true && response['data'] is Map<String, dynamic>) {
-        Logger.info('Clan created successfully: ${response['data']['name']}');
-        return Clan.fromMap(response['data']);
+      final response = await _apiService.post('/api/clans', {'name': name, 'tag': tag}, requireAuth: true);
+      if (response != null && response['success'] == true && response['clan'] is Map<String, dynamic>) {
+        Logger.info('Clan created successfully: ${response['clan']['name']}');
+        return Clan.fromMap(response['clan']);
       } else {
          Logger.warning('Failed to create clan. Response: $response');
          Logger.error('Failed to create clan. Full response: $response');
@@ -426,3 +426,5 @@ class ClanService with ChangeNotifier {
     return [];
   }
 }
+
+
