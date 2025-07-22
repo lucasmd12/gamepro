@@ -21,6 +21,7 @@ class Message {
   final String? callStatus;
   final String? callType;
   final int? callDuration;
+  final bool? isSystem; // Adicionado para mensagens do sistema
 
   Message({
     required this.id,
@@ -37,12 +38,13 @@ class Message {
     this.senderClanFlag, // Inicializado no construtor
     this.senderFederationTag, // Inicializado no construtor
     this.senderClanRole, // Inicializado no construtor
- this.fileSize,
- this.thumbnailUrl,
- this.callId,
- this.callStatus,
- this.callType,
- this.callDuration,
+    this.fileSize,
+    this.thumbnailUrl,
+    this.callId,
+    this.callStatus,
+    this.callType,
+    this.callDuration,
+    this.isSystem, // Inicializado no construtor
   });
 
   factory Message.fromMap(Map<String, dynamic> map) {
@@ -67,6 +69,7 @@ class Message {
       callStatus: map["callStatus"],
       callType: map["callType"],
       callDuration: map["callDuration"],
+      isSystem: map['isSystem'] ?? false, // Mapeando o novo campo
     );
   }
 
@@ -84,6 +87,7 @@ class Message {
       'senderClanFlag': senderClanFlag,
       'senderFederationTag': senderFederationTag,
       'senderClanRole': senderClanRole,
+      'isSystem': isSystem, // Incluindo no toMap
       if (fileUrl != null) 'fileUrl': fileUrl,
       if (type != null) 'type': type,
     };
@@ -113,10 +117,6 @@ class Message {
     return fileUrl!.split('/').last.split('?').first;
   }
 
-  bool get isSystem {
-    return false;
-  }
-  
   // Getter para extensão do arquivo
   String? get fileExtension {
     if (fileName == null) return null;
