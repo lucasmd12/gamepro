@@ -14,8 +14,7 @@ import 'package:lucasbeatsfederacao/screens/invite_list_screen.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:lucasbeatsfederacao/screens/instaclan_feed_screen.dart';
 import 'package:lucasbeatsfederacao/screens/clan_wars_list_screen.dart';
-import 'package:lucasbeatsfederacao/screens/federation_management_screen.dart';
-import 'package:lucasbeatsfederacao/screens/qrr_list_screen.dart';
+// import 'package:lucasbeatsfederacao/screens/qrr_list_screen.dart'; // Removido da navegaÃ§Ã£o principal
 import 'package:lucasbeatsfederacao/screens/admin_panel_screen.dart'; // Import do AdminPanelScreen
 
 class HomeScreen extends StatefulWidget {
@@ -55,12 +54,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _widgetOptions = <Widget>[
           const HomeTab(),
           const FederationExplorerScreen(),
-          FederationManagementScreen(federationId: currentUser?.federationId ?? ''),
+          // FederationManagementScreen(federationId: currentUser?.federationId ?? ''), // SerÃ¡ acessado via AdminPanel ou ClanManagement
           const ContextualChatScreen(chatContext: 'global'),
           const ContextualVoiceScreen(voiceContext: 'global'),
           const InstaClanFeedScreen(),
           const ClanWarsListScreen(),
-          const QRRListScreen(),
+          // const QRRListScreen(), // Removido da navegaÃ§Ã£o principal
           const SettingsScreen(),
         ];
       });
@@ -92,15 +91,15 @@ class _HomeScreenState extends State<HomeScreen> {
      showDialog(
         context: context,
         builder: (BuildContext context) => AlertDialog(
-          title: const Text("Permissão Necessária"),
-          content: Text("A permissão de $permissionName foi negada permanentemente. Por favor, habilite-a nas configurações do aplicativo para usar todas as funcionalidades."),
+          title: const Text("PermissÃ£o NecessÃ¡ria"),
+          content: Text("A permissÃ£o de $permissionName foi negada permanentemente. Por favor, habilite-a nas configuraÃ§Ãµes do aplicativo para usar todas as funcionalidades."),
           actions: <Widget>[
             TextButton(
               child: const Text("Cancelar"),
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
-              child: const Text("Abrir Configurações"),
+              child: const Text("Abrir ConfiguraÃ§Ãµes"),
               onPressed: () {
                 openAppSettings();
                 Navigator.of(context).pop();
@@ -159,13 +158,13 @@ class _HomeScreenState extends State<HomeScreen> {
          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
          body: Center(child: Padding(
            padding: const EdgeInsets.all(16.0),
-           child: Text("Erro crítico ao carregar dados do usuário. Por favor, tente reiniciar o aplicativo.", textAlign: TextAlign.center, style: textTheme.bodyMedium?.copyWith(color: Colors.white)),
+           child: Text("Erro crÃ­tico ao carregar dados do usuÃ¡rio. Por favor, tente reiniciar o aplicativo.", textAlign: TextAlign.center, style: textTheme.bodyMedium?.copyWith(color: Colors.white)),
          )),
        );
     }
 
     IconData displayIcon = Icons.person;
-    String displayText = currentUser.username ?? 'Usuário';
+    String displayText = currentUser.username ?? 'UsuÃ¡rio';
 
     if (currentUser.role == Role.admMaster) {
       displayIcon = Icons.admin_panel_settings;
@@ -207,14 +206,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
         actions: [
-           // 👇 BOTÃO CONDICIONAL PARA VOLTAR AO PAINEL ADM
+           // ðŸ‘‡ BOTÃƒO CONDICIONAL PARA VOLTAR AO PAINEL ADM
            if (currentUser.role == Role.admMaster)
             IconButton(
               icon: const Icon(Icons.dashboard_customize),
               tooltip: 'Painel Administrativo',
               onPressed: () {
-                // Verifica se a tela atual é a raiz da navegação.
-                // Se sim, usa push. Se não, usa pop para voltar.
+                // Verifica se a tela atual Ã© a raiz da navegaÃ§Ã£o.
+                // Se sim, usa push. Se nÃ£o, usa pop para voltar.
                 if (Navigator.of(context).canPop()) {
                   Navigator.of(context).pop();
                 } else {
@@ -226,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
            IconButton(
             icon: const Icon(Icons.notifications_none),
-            tooltip: 'Notificações',
+            tooltip: 'NotificaÃ§Ãµes',
             onPressed: () {
               Logger.info("Notifications button pressed.");
               Navigator.of(context).push(
@@ -277,12 +276,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Início'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'InÃ­cio'),
           BottomNavigationBarItem(icon: Icon(Icons.travel_explore_outlined), activeIcon: Icon(Icons.travel_explore), label: 'Explorar'),
-          BottomNavigationBarItem(icon: Icon(Icons.group_work_outlined), activeIcon: Icon(Icons.group_work), label: 'Federação'),
           BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), activeIcon: Icon(Icons.chat_bubble), label: 'Chat'),
           BottomNavigationBarItem(icon: Icon(Icons.call_outlined), activeIcon: Icon(Icons.call), label: 'Chamadas'),
-          BottomNavigationBarItem(icon: Icon(Icons.photo_library_outlined), activeIcon: Icon(Icons.photo_library), label: 'InstaClã'),
+          BottomNavigationBarItem(icon: Icon(Icons.photo_library_outlined), activeIcon: Icon(Icons.photo_library), label: 'InstaClÃ£'),
           BottomNavigationBarItem(icon: Icon(Icons.military_tech_outlined), activeIcon: Icon(Icons.military_tech), label: 'Guerras'),
           BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), activeIcon: Icon(Icons.settings), label: 'Config'),
         ],
@@ -296,3 +294,5 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+
