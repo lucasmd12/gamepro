@@ -6,6 +6,9 @@ import 'package:lucasbeatsfederacao/services/auth_service.dart'; // Importar Aut
 import 'package:provider/provider.dart'; // Importar Provider
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+// CORREÇÃO: Adicionado o import do AuthProvider, caso seja necessário em outro lugar.
+import 'package:lucasbeatsfederacao/providers/auth_provider.dart';
+
 
 class UserDashboardWidget extends StatelessWidget {
   final User user;
@@ -30,7 +33,7 @@ class UserDashboardWidget extends StatelessWidget {
                   radius: 30,
                   backgroundColor: _getRoleColor(user.role),
                   backgroundImage: user.avatar != null && Uri.tryParse(user.avatar!)?.hasAbsolutePath == true
-                    ? NetworkImage(user.avatar!) // Use null-aware access here
+                    ? NetworkImage(user.avatar!)
                     : null,
                   child: user.avatar == null
                     ? Text(
@@ -72,10 +75,10 @@ class UserDashboardWidget extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (user.federationTag != null && user.federationTag!.isNotEmpty) ...[ // Usando federationTag
+                      if (user.federationTag != null && user.federationTag!.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          'Tag: ${user.federationTag}', // Usando federationTag
+                          'Tag: ${user.federationTag}',
                           style: TextStyle(
                             color: Colors.grey.shade400,
                             fontSize: 14,
@@ -85,11 +88,11 @@ class UserDashboardWidget extends StatelessWidget {
                     ],
                   ),
                 ),
-                _buildStatusIndicator(user.isOnline), // Usando isOnline
+                _buildStatusIndicator(user.isOnline),
               ],
             ),
             const SizedBox(height: 16),
-            _buildUserStats(context), // Passar o contexto para _buildUserStats
+            _buildUserStats(context),
           ],
         ),
       ),
@@ -101,13 +104,13 @@ class UserDashboardWidget extends StatelessWidget {
       width: 12,
       height: 12,
       decoration: BoxDecoration(
-        color: isOnline ? Colors.green : Colors.red, // Cor baseada no status online
+        color: isOnline ? Colors.green : Colors.red,
         shape: BoxShape.circle,
       ),
     );
   }
 
-  Widget _buildUserStats(BuildContext context) { // Receber o contexto
+  Widget _buildUserStats(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -115,7 +118,7 @@ class UserDashboardWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: FutureBuilder<Map<String, dynamic>>(
-        future: _fetchUserStats(context), // Passar o contexto para _fetchUserStats
+        future: _fetchUserStats(context),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -146,15 +149,23 @@ class UserDashboardWidget extends StatelessWidget {
     );
   }
 
-  Future<Map<String, dynamic>> _fetchUserStats(BuildContext context) async { // Receber o contexto
+  // ==================== INÍCIO DA CORREÇÃO ====================
+  Future<Map<String, dynamic>> _fetchUserStats(BuildContext context) async {
     try {
-      final authService = Provider.of<AuthProvider>(context, listen: false).authService; // Obter AuthService
-      final apiService = authService.apiService; // Obter ApiService
+      // Acessando o AuthService diretamente, que é a fonte da verdade para autenticação.
+      final authService = Provider.of<AuthService>(context, listen: false);
+      
+      // O ApiService e o token devem ser acessados a partir do AuthService.
+      final apiService = authService.apiService;
+      final token = authService.token;
+
+      // Se não houver token, não há como fazer a requisição.
+      if (token == null) return {};
 
       final response = await http.get(
         Uri.parse('${apiService.baseUrl}/api/stats/user/${user.id}'),
         headers: {
-          'Authorization': 'Bearer ${authService.token}', // Usar o token do AuthService
+          'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
@@ -167,6 +178,7 @@ class UserDashboardWidget extends StatelessWidget {
     }
     return {};
   }
+  // ===================== FIM DA CORREÇÃO ======================
 
   Color _getRoleColor(Role role) {
     switch (role) {
@@ -180,21 +192,21 @@ class UserDashboardWidget extends StatelessWidget {
         return Colors.blue;
       case Role.guest:
         return Colors.grey;
-      case Role.user: // Adicionado User
-        return Colors.blue; // Cor para User
+      case Role.user:
+        return Colors.blue;
       default:
         return Colors.grey;
     }
   }
 
   String _getRoleDisplayName(Role role) {
-    // Removed Role.federationAdmin and Role.adm as they are now covered by Role.admMaster
     switch (role) {
       case Role.admMaster:
-        return 'ADM MASTER'; // Or 'ADMINISTRADOR' if preferred
+        return 'ADM MASTER';
       case Role.user:
         return 'USUÁRIO';
       default:
+        // Mantive a sua lógica original aqui
         return role.toString().split('.').last.toUpperCase();
     }
   }
@@ -221,5 +233,3 @@ class UserDashboardWidget extends StatelessWidget {
     );
   }
 }
-
-
