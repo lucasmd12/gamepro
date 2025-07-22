@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider';
+import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/services/clan_service.dart';
 import 'package:lucasbeatsfederacao/services/federation_service.dart';
 import 'package:lucasbeatsfederacao/models/clan_model.dart';
@@ -59,12 +59,15 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
       } else {
         _filteredOrganizations = _organizations.where((org) {
           final name = org is Clan ? org.name : (org as Federation).name;
-          final tag = org is Clan ? org.tag : (org as Federation).tag; // Federação pode não ter tag
-          final leader = org is Clan ? org.leader?.username : (org as Federation).leader?.username; // Assumindo que leader é um objeto User
+          final tag = org is Clan ? org.tag : (org as Federation).tag;
+          // CORREÇÃO 1: Acessar a propriedade correta do líder
+          final leader = org is Clan
+              ? org.leaderId // Clan tem 'leaderId' (String)
+              : (org as Federation).leader.username; // Federation tem 'leader.username'
 
           return name.toLowerCase().contains(query.toLowerCase()) ||
                  (tag?.toLowerCase().contains(query.toLowerCase()) ?? false) ||
-                 (leader?.toLowerCase().contains(query.toLowerCase()) ?? false);
+                 (leader.toLowerCase().contains(query.toLowerCase()));
         }).toList();
       }
     });
@@ -199,9 +202,13 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
   Widget _buildOrganizationCard(dynamic organization) {
     final bool isClan = organization is Clan;
     final String name = isClan ? organization.name : organization.name;
-    final String? tag = isClan ? organization.tag : organization.tag; // Federação pode não ter tag
-    final String? leaderName = isClan ? organization.leader?.username : organization.leader?.username;
-    final int memberCount = isClan ? organization.members.length : organization.clans.length; // Membros para clã, clãs para federação
+    final String? tag = isClan ? organization.tag : organization.tag;
+    // CORREÇÃO 2: Acessar a propriedade correta e o tipo correto
+    final String? leaderName = isClan
+        ? "ID: ${organization.leaderId}" // Mostra o ID do líder do clã
+        : organization.leader.username; // Mostra o nome de usuário do líder da federação
+    // CORREÇÃO 3: Tratar possível nulidade ao acessar .length
+    final int memberCount = (isClan ? organization.members?.length : organization.clans.length) ?? 0;
     final bool isActive = true; // Assumindo que todas as organizações carregadas estão ativas
 
     return Container(
@@ -322,7 +329,7 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildStatItem(isClan ? 'Membros' : 'Clãs', '$memberCount', Icons.people),
-                _buildStatItem('Criado', _formatDate(isClan ? organization.createdAt : organization.createdAt), Icons.calendar_today),
+                _buildStatItem('Criado', _formatDate(isClan ? organization.createdAt : DateTime.now()), Icons.calendar_today), // Nota: Federation não tem createdAt no modelo
                 _buildStatItem('Tipo', isClan ? 'CLÃ' : 'FEDERAÇÃO', _getTypeIcon(isClan ? 'clan' : 'federation')),
               ],
             ),
@@ -431,7 +438,8 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
     }
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'N/A';
     final now = DateTime.now();
     final difference = now.difference(date);
 
@@ -703,5 +711,3 @@ class _AdminOrganizationManagementScreenState extends State<AdminOrganizationMan
     super.dispose();
   }
 }
-
-
