@@ -47,7 +47,7 @@ class User {
       if (value is String) {
         return value;
       } else if (value is Map<String, dynamic>) {
-        return value['id'] as String?;
+        return value['_id'] as String?;
       }
       if (value != null) {
          Logger.warning('Expected String or Map for ID, but got ${value.runtimeType}');
@@ -94,6 +94,7 @@ class User {
     final dynamic federationData = json['federation'];
     final dynamic rawRole = json['role'];
     final dynamic rawClanRole = json['clanRole'];
+    final dynamic rawFederationRole = json['federationRole'];
 
     return User(
       id: json['_id'] as String,
@@ -108,7 +109,7 @@ class User {
       federationId: _getStringOrIdFromMap(federationData),
       federationName: _getNameFromMap(federationData),
       federationTag: _getTagFromMap(federationData),
-      federationRole: json['federationRole'] is String ? roleFromString(json['federationRole']) : Role.member,
+      federationRole: rawFederationRole is String ? roleFromString(rawFederationRole) : Role.member,
       role: rawRole is String ? roleFromString(rawRole) : Role.user,
       online: json['online'] as bool? ?? false,
       ultimaAtividade: _parseDateTime(json['ultimaAtividade']),
