@@ -7,6 +7,8 @@ import 'package:lucasbeatsfederacao/services/user_service.dart';
 import 'package:lucasbeatsfederacao/services/upload_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/widgets/custom_snackbar.dart';
+// CORREÇÃO: Importando o AuthService para acesso direto
+import 'package:lucasbeatsfederacao/services/auth_service.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -49,30 +51,16 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
     setState(() => _isLoading = true);
 
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
     final userService = Provider.of<UserService>(context, listen: false);
     final uploadService = Provider.of<UploadService>(context, listen: false);
 
     String? newAvatarUrl;
     if (_newProfileImage != null) {
       try {
-        // CORREÇÃO 1: Usar o nome correto do método: uploadAvatar
         final uploadResult = await uploadService.uploadAvatar(File(_newProfileImage!.path));
-        
-        // A estrutura de resposta do seu serviço parece ser diferente. Ajustando para o que foi visto.
         if (uploadResult['success'] == true && uploadResult['data'] != null) {
-          // O serviço de avatar pode retornar a URL diretamente no 'data' ou dentro de uma lista.
-          // Vamos assumir que 'data' contém a URL ou um objeto com a URL.
-          if (uploadResult['data'] is Map && uploadResult['data']['url'] != null) {
-             newAvatarUrl = uploadResult['data']['url'];
-          } else if (uploadResult['data'] is String) {
-             newAvatarUrl = uploadResult['data'];
-          } else {
-            Logger.error('Formato inesperado da URL do avatar: ${uploadResult['data']}');
-            CustomSnackbar.showError(context, 'Erro ao processar a resposta do upload.');
-            setState(() => _isLoading = false);
-            return;
-          }
+          newAvatarUrl = uploadResult["data"]["url"];
         } else {
           Logger.error('Erro no upload da imagem: ${uploadResult['message']}');
           CustomSnackbar.showError(context, 'Erro no upload da imagem: ${uploadResult['message']}');
@@ -89,19 +77,17 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
     try {
       final updatedUser = await userService.updateUserProfile(
-        authProvider.currentUser!.id,
+        authService.currentUser!.id,
         username: _usernameController.text,
         avatar: newAvatarUrl,
       );
 
       if (updatedUser != null) {
-        // CORREÇÃO 2: Remover a chamada ao método inexistente.
-        // O AuthProvider vai ouvir as mudanças do AuthService e se atualizar sozinho.
-        // authProvider.setCurrentUser(updatedUser); 
+        // ==================== INÍCIO DA CORREÇÃO ====================
+        // Chamando o método correto para atualizar os dados do usuário no app
+        await authService.fetchUserProfile();
+        // ===================== FIM DA CORREÇÃO ======================
         
-        // Para forçar a atualização imediata na UI, podemos chamar o método que valida o token novamente.
-        await authProvider.authService.validateToken();
-
         CustomSnackbar.showSuccess(context, 'Perfil atualizado com sucesso!');
         if (mounted) Navigator.pop(context);
       } else {
@@ -121,9 +107,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final currentUser = authProvider.currentUser;
 
     if (currentUser == null) {
-      return const Scaffold(
-        appBar: AppBar(title: Text('Editar Perfil')),
-        body: Center(child: CircularProgressIndicator()),
+      // CORREÇÃO: Removido o 'const' do Scaffold
+      return Scaffold(
+        appBar: AppBar(title: const Text('Editar Perfil')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
