@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucasbeatsfederacao/models/user_model.dart';
 import 'package:lucasbeatsfederacao/models/role_model.dart';
+import 'package:lucasbeatsfederacao/services/api_service.dart'; // Importar ApiService
+import 'package:lucasbeatsfederacao/services/auth_service.dart'; // Importar AuthService
+import 'package:provider/provider.dart'; // Importar Provider
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -86,7 +89,7 @@ class UserDashboardWidget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            _buildUserStats(),
+            _buildUserStats(context), // Passar o contexto para _buildUserStats
           ],
         ),
       ),
@@ -104,7 +107,7 @@ class UserDashboardWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildUserStats() {
+  Widget _buildUserStats(BuildContext context) { // Receber o contexto
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -112,7 +115,7 @@ class UserDashboardWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: FutureBuilder<Map<String, dynamic>>(
-        future: _fetchUserStats(),
+        future: _fetchUserStats(context), // Passar o contexto para _fetchUserStats
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -143,12 +146,15 @@ class UserDashboardWidget extends StatelessWidget {
     );
   }
 
-  Future<Map<String, dynamic>> _fetchUserStats() async {
+  Future<Map<String, dynamic>> _fetchUserStats(BuildContext context) async { // Receber o contexto
     try {
+      final authService = Provider.of<AuthProvider>(context, listen: false).authService; // Obter AuthService
+      final apiService = authService.apiService; // Obter ApiService
+
       final response = await http.get(
-        Uri.parse('${_getApiBaseUrl()}/api/stats/user/${user.id}'),
+        Uri.parse('${apiService.baseUrl}/api/stats/user/${user.id}'),
         headers: {
-          // 'Authorization': 'Bearer ${_getAuthToken()}', // Removido temporariamente
+          'Authorization': 'Bearer ${authService.token}', // Usar o token do AuthService
           'Content-Type': 'application/json',
         },
       );
@@ -160,38 +166,6 @@ class UserDashboardWidget extends StatelessWidget {
       // Silently fail and return empty stats
     }
     return {};
-  }
-
-  String _getApiBaseUrl() {
-    // Assumindo que você tem acesso ao ApiService através do contexto
-    return 'https://beckend-ydd1.onrender.com'; // URL do seu backend
-  }
-
-  String? _getAuthToken() {
-    // Assumindo que você tem acesso ao token através do contexto
-    return null; // Implementar conforme sua arquitetura
-  }
-
-  Widget _buildStatColumn(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey.shade400,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
   }
 
   Color _getRoleColor(Role role) {
@@ -223,6 +197,28 @@ class UserDashboardWidget extends StatelessWidget {
       default:
         return role.toString().split('.').last.toUpperCase();
     }
+  }
+
+  Widget _buildStatColumn(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey.shade400,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
   }
 }
 
