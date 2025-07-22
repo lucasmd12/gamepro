@@ -20,59 +20,64 @@ class ClanService with ChangeNotifier {
   List<Clan> get clans => _clans;
   bool get isLoading => _isLoading;
 
-  // ... (O resto do arquivo que não mexe com ClanWarModel permanece igual)
-  // ... (getClanDetails, getClanMembers, etc. estão corretos)
-
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
   }
 
-  Future<List<Clan>> fetchClansByFederation(String federationId) async {
+  // ==================== INÍCIO DA CORREÇÃO 1 ====================
+  Future<List<Clan>> fetchClansByFederation(String federationId, {int page = 1, int limit = 10}) async {
     _setLoading(true);
     try {
-      final response = await _apiService.get('/api/federations/$federationId/clans', requireAuth: true);
+      // Adicionando os parâmetros de paginação na URL da API
+      final endpoint = '/api/federations/$federationId/clans?page=$page&limit=$limit';
+      final response = await _apiService.get(endpoint, requireAuth: true);
+      
       if (response != null && response['success'] == true && response['data'] is List) {
-        _clans = (response['data'] as List).map((json) => Clan.fromMap(json)).toList();
-        Logger.info('Fetched ${_clans.length} clans for federation $federationId.');
-        return _clans;
+        // Se for a primeira página, substitui a lista. Se não, adiciona.
+        // A tela já gerencia isso, então o serviço pode apenas retornar a nova lista.
+        final newClans = (response['data'] as List).map((json) => Clan.fromMap(json)).toList();
+        Logger.info('Fetched ${newClans.length} clans for federation $federationId on page $page.');
+        _clans = newClans; // Atualiza a lista interna do serviço
+        return newClans;
       } else {
         Logger.warning('Unexpected response format when fetching clans for federation $federationId: $response');
-        _clans = [];
         return [];
       }
     } catch (e, s) {
       Logger.error('Error fetching clans for federation $federationId', error: e, stackTrace: s);
-      _clans = [];
       return [];
     } finally {
       _setLoading(false);
     }
   }
 
-  /// Fetch all clans
-  Future<List<Clan>> getAllClans() async {
+  // ==================== INÍCIO DA CORREÇÃO 2 ====================
+  Future<List<Clan>> getAllClans({int page = 1, int limit = 10}) async {
     _setLoading(true);
     try {
-      final response = await _apiService.get('/api/clans', requireAuth: true);
+      // Adicionando os parâmetros de paginação na URL da API
+      final endpoint = '/api/clans?page=$page&limit=$limit';
+      final response = await _apiService.get(endpoint, requireAuth: true);
+
       if (response != null && response['success'] == true && response['data'] is List) {
         final clansData = (response['data'] as List);
-        _clans = clansData.map((json) => Clan.fromMap(json)).toList();
-        Logger.info('Fetched ${_clans.length} total clans.');
- return _clans;
+        final newClans = clansData.map((json) => Clan.fromMap(json)).toList();
+        Logger.info('Fetched ${newClans.length} total clans on page $page.');
+        _clans = newClans; // Atualiza a lista interna do serviço
+        return newClans;
       } else {
         Logger.warning('Unexpected response format when fetching all clans: $response');
- _clans = [];
- return [];
+        return [];
       }
     } catch (e, s) {
       Logger.error('Error fetching all clans', error: e, stackTrace: s);
- _clans = [];
- return [];
+      return [];
     } finally {
       _setLoading(false);
     }
   }
+  // ===================== FIM DAS CORREÇÕES DE PAGINAÇÃO ======================
 
   Future<Clan?> getClanDetails(String clanId) async {
     try {
@@ -159,17 +164,17 @@ class ClanService with ChangeNotifier {
     final currentUser = _authService.currentUser;
     final clan = await getClanDetails(currentUser?.clanId ?? '');
     if (currentUser == null || clan == null) {
- Logger.warning("Permission Denied [Remove Member]: Current user or clan not found.");
+      Logger.warning("Permission Denied [Remove Member]: Current user or clan not found.");
       return false;
     }
 
     String? currentUserRoleInClan;
- if (clan.memberRoles != null) {
- for (var roleMap in clan.memberRoles!) {
- if (roleMap['user'] == currentUser.id) {
- currentUserRoleInClan = roleMap['role'];
- break;
- }
+    if (clan.memberRoles != null) {
+      for (var roleMap in clan.memberRoles!) {
+        if (roleMap['user'] == currentUser.id) {
+          currentUserRoleInClan = roleMap['role'];
+          break;
+        }
       }
     }
 
@@ -188,17 +193,17 @@ class ClanService with ChangeNotifier {
     final currentUser = _authService.currentUser;
     final clan = await getClanDetails(currentUser?.clanId ?? '');
     if (currentUser == null || clan == null) {
- Logger.warning("Permission Denied [Promote Member]: Current user or clan not found.");
+      Logger.warning("Permission Denied [Promote Member]: Current user or clan not found.");
       return false;
     }
 
     String? currentUserRoleInClan;
- if (clan.memberRoles != null) {
- for (var roleMap in clan.memberRoles!) {
- if (roleMap['user'] == currentUser.id) {
- currentUserRoleInClan = roleMap['role'];
- break;
- }
+    if (clan.memberRoles != null) {
+      for (var roleMap in clan.memberRoles!) {
+        if (roleMap['user'] == currentUser.id) {
+          currentUserRoleInClan = roleMap['role'];
+          break;
+        }
       }
     }
 
@@ -207,10 +212,10 @@ class ClanService with ChangeNotifier {
     try {
       final response = await _apiService.put('/api/clans/$clanId/members/$userIdToPromote/promote', {}, requireAuth: true);
       if (response != null && response['success'] == true) {
- return true;
+        return true;
       } else {
- Logger.error('Failed to promote member $userIdToPromote in clan $clanId. Response: $response');
- return false;
+        Logger.error('Failed to promote member $userIdToPromote in clan $clanId. Response: $response');
+        return false;
       }
     } catch (e) {
       Logger.error('Error promoting member $userIdToPromote in clan $clanId: $e');
@@ -235,17 +240,17 @@ class ClanService with ChangeNotifier {
         }
       }
     }
-    final clanId = currentUser.clanId!; // Usando clanId
+    final clanId = currentUser.clanId!;
 
- bool isLeader = currentUser.id == clan.leaderId;
- bool isSubLeader = currentUserRoleInClan == roleToString(Role.subLeader);
+    bool isLeader = currentUser.id == clan.leaderId;
+    bool isSubLeader = currentUserRoleInClan == roleToString(Role.subLeader);
 
- if (!(isLeader || isSubLeader || currentUser.role == Role.admMaster)) {
- Logger.warning('Permission Denied [Demote Member]: Only Leader/SubLeader can demote members.');
- return false;
+    if (!(isLeader || isSubLeader || currentUser.role == Role.admMaster)) {
+      Logger.warning('Permission Denied [Demote Member]: Only Leader/SubLeader can demote members.');
+      return false;
     }
 
- try {
+    try {
       final response = await _apiService.put('/api/clans/$clanId/members/$userIdToDemote/demote', {}, requireAuth: true);
       return response != null;
     } catch (e) {
@@ -302,32 +307,34 @@ class ClanService with ChangeNotifier {
     return null;
   }
 
-   Future<Clan?> createClan(String name, String tag) async {
-    Logger.info('Attempting to create clan with name: $name, tag: $tag');
+  // ==================== INÍCIO DA CORREÇÃO 3 ====================
+  Future<Clan?> createClan(String name, String? tag) async {
+    // Construindo o mapa de dados aqui dentro do método
+    final Map<String, dynamic> clanData = {
+      'name': name,
+      if (tag != null && tag.isNotEmpty) 'tag': tag,
+    };
+
+    Logger.info('Attempting to create clan with data: $clanData');
     try {
-      final response = await _apiService.post('/api/clans', {'name': name, 'tag': tag}, requireAuth: true);
-      if (response != null && response['success'] == true && response['clan'] is Map<String, dynamic>) {
-        Logger.info('Clan created successfully: ${response['clan']['name']}');
-        return Clan.fromMap(response['clan']);
+      final response = await _apiService.post('/api/clans', clanData, requireAuth: true);
+      if (response != null && response['success'] == true && response['data'] is Map<String, dynamic>) {
+        Logger.info('Clan created successfully: ${response['data']['name']}');
+        return Clan.fromMap(response['data']);
       } else {
          Logger.warning('Failed to create clan. Response: $response');
-         Logger.error('Failed to create clan. Full response: $response');
-         // Dependendo da estrutura da sua API, você pode querer lançar uma exceção
-         // throw Exception('Failed to create clan');
          return null;
       }
     } catch (e, s) {
       Logger.error('Error creating clan:', error: e, stackTrace: s);
-      // Dependendo da sua lógica de tratamento de erros, você pode querer relançar a exceção
-      // rethrow;
       return null;
     }
   }
+  // ===================== FIM DA CORREÇÃO DE CRIAÇÃO ======================
 
   Future<bool> deleteClan(String clanId) async {
     Logger.info('Attempting to delete clan with ID: $clanId');
     try {
-      // Assuming your backend has a DELETE endpoint for clans at /api/clans/{clanId}
       final response = await _apiService.delete('/api/clans/$clanId', requireAuth: true);
       if (response != null && response['success'] == true) {
         Logger.info('Clan with ID $clanId deleted successfully.');
@@ -370,7 +377,6 @@ class ClanService with ChangeNotifier {
     );
 
     if (response != null && response['success'] == true) {
-      // CORREÇÃO: Usando fromMap
       return ClanWarModel.fromMap(response['data']);
     }
     return null;
@@ -379,7 +385,6 @@ class ClanService with ChangeNotifier {
   Future<ClanWarModel?> acceptWar(String warId) async {
     final response = await _apiService.put('/api/clan-wars/$warId/accept', {}, requireAuth: true);
     if (response != null && response['success'] == true) {
-      // CORREÇÃO: Usando fromMap
       return ClanWarModel.fromMap(response['data']);
     }
     return null;
@@ -388,7 +393,6 @@ class ClanService with ChangeNotifier {
   Future<ClanWarModel?> rejectWar(String warId) async {
     final response = await _apiService.put('/api/clan-wars/$warId/reject', {}, requireAuth: true);
     if (response != null && response['success'] == true) {
-      // CORREÇÃO: Usando fromMap
       return ClanWarModel.fromMap(response['data']);
     }
     return null;
@@ -402,7 +406,6 @@ class ClanService with ChangeNotifier {
     );
 
     if (response != null && response['success'] == true && response['data'] is Map<String, dynamic>) {
-      // CORREÇÃO: Usando fromMap
       return ClanWarModel.fromMap(response['data']);
     }
     return null;
@@ -411,7 +414,6 @@ class ClanService with ChangeNotifier {
   Future<ClanWarModel?> cancelWar(String warId, String reason) async {
     final response = await _apiService.post('/api/clan-wars/$warId/cancel', {'reason': reason}, requireAuth: true);
     if (response != null && response['success'] == true) {
-      // CORREÇÃO: Usando fromMap
       return ClanWarModel.fromMap(response['data']);
     }
     return null;
@@ -420,11 +422,8 @@ class ClanService with ChangeNotifier {
   Future<List<ClanWarModel>> getActiveWars() async {
     final response = await _apiService.get('/api/clan-wars/active', requireAuth: true);
     if (response != null && response['success'] == true && response['data'] is List) {
-      // CORREÇÃO: Usando fromMap
       return (response['data'] as List).map((json) => ClanWarModel.fromMap(json)).toList();
     }
     return [];
   }
 }
-
-
