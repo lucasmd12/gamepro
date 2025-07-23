@@ -4,6 +4,7 @@ import 'package:lucasbeatsfederacao/models/user_model.dart';
 import 'package:lucasbeatsfederacao/services/voip_service.dart';
 import 'package:lucasbeatsfederacao/services/api_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
+import 'package:lucasbeatsfederacao/services/socket_service.dart'; // ✅ AÇÃO 1: ADICIONADO O IMPORT QUE FALTAVA
 
 class CallContactsScreen extends StatefulWidget {
   const CallContactsScreen({super.key});
@@ -43,7 +44,8 @@ class _CallContactsScreenState extends State<CallContactsScreen> {
       }
 
       // Atualizar o status online/offline com base no SocketService
-      final connectedUserIds = socketService.connectedUsers.keys.toList();
+      // ✅ AÇÃO 2: ADICIONADA VERIFICAÇÃO DE NULIDADE PARA connectedUsers (BOA PRÁTICA)
+      final connectedUserIds = socketService.connectedUsers?.keys.toList() ?? [];
       for (var user in _membros) {
         user.isOnline = connectedUserIds.contains(user.id);
       }
@@ -51,7 +53,9 @@ class _CallContactsScreenState extends State<CallContactsScreen> {
       setState(() => _isLoading = false);
     } catch (e) {
       Logger.error("Erro ao carregar usuários online: $e");
-      setState(() => _isLoading = false);
+      if(mounted) { // ✅ AÇÃO 3: ADICIONADA VERIFICAÇÃO 'mounted' (BOA PRÁTICA)
+        setState(() => _isLoading = false);
+      }
     }
   }
 
