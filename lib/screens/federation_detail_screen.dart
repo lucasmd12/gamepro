@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/models/federation_model.dart';
-import 'package:lucasbeatsfederacao/services/permission_service.dart'; // IMPORT ADICIONADO
+import 'package:lucasbeatsfederacao/services/permission_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'package:lucasbeatsfederacao/screens/clan_list_screen.dart';
 import 'package:lucasbeatsfederacao/screens/federation_text_chat_screen.dart';
 import 'package:lucasbeatsfederacao/screens/admin_manage_clans_screen.dart';
+import 'package:lucasbeatsfederacao/services/voip_service.dart'; // Import ausente
+import 'package:lucasbeatsfederacao/providers/auth_provider.dart'; // Import ausente
 
 // Uma nova aba para os detalhes da federação, para manter a UI limpa
 class FederationDetailsTab extends StatelessWidget {
@@ -160,7 +162,7 @@ class _FederationDetailScreenState extends State<FederationDetailScreen> {
             // Botão para iniciar chamada Jitsi (apenas áudio)
             if (canManage)
               IconButton(
-                icon: const Icon(Icons.call_end, color: Colors.green), // Ícone de chamada
+                icon: const Icon(Icons.call, color: Colors.green), // Ícone de chamada corrigido
                 onPressed: () async {
                   final voipService = Provider.of<VoIPService>(context, listen: false);
                   final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -188,4 +190,26 @@ class _FederationDetailScreenState extends State<FederationDetailScreen> {
                 },
                 tooltip: 'Iniciar Chamada de Voz da Federação',
               ),
+            // ✅ AÇÃO 1: CORRIGIDO O BLOCO 'IF' E A ESTRUTURA DO WIDGET
             if (widget.federation.tag != null && widget.federation.tag!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Center(
+                  child: Text(
+                    '[${widget.federation.tag!}]',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+          ],
+          bottom: TabBar(
+            tabs: tabs, // Usa a lista de abas dinâmica
+          ),
+        ),
+        body: TabBarView(
+          children: tabViews, // Usa a lista de views dinâmica
+        ),
+      ),
+    );
+  }
+}
