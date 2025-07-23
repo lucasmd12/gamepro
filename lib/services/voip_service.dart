@@ -5,6 +5,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:http/http.dart' as http;
+// ✅ AÇÃO 1: GARANTIR QUE O IMPORT PRINCIPAL ESTÁ AQUI
 import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
@@ -85,24 +86,25 @@ class VoIPService extends ChangeNotifier {
     _onCallStarted = onCallStarted;
   }
 
-  // ✅ AÇÃO FINAL: JITSI LISTENER CORRIGIDO PARA A API DA VERSÃO 10.3.0
+  // ✅ AÇÃO 2: CORREÇÃO FINAL E DEFINITIVA DO LISTENER DO JITSI
   void _setupJitsiListeners() {
-    _jitsiMeet.conferenceEvents.listen((event) {
-      Logger.info("Jitsi Event: ${event.type}, Data: ${event.data}");
-      switch (event.type) {
-        case JitsiMeetConferenceEventType.conferenceJoined:
-          _isInCall = true;
-          _onCallStarted?.call(_currentRoomId ?? "");
-          notifyListeners();
-          break;
-        case JitsiMeetConferenceEventType.conferenceTerminated:
-          endCall();
-          break;
-        default:
-          break;
-      }
-    });
-    Logger.info("Jitsi listeners configured");
+    _jitsiMeet.addListener(JitsiMeetingListener(
+      onConferenceJoined: (url) {
+        Logger.info("Jitsi Conference Joined: $url");
+        _isInCall = true;
+        _onCallStarted?.call(_currentRoomId ?? "");
+        notifyListeners();
+      },
+      onConferenceTerminated: (url, error) {
+        Logger.info("Jitsi Conference Terminated: $url, error: $error");
+        endCall();
+      },
+      onConferenceWillJoin: (url) {
+        Logger.info("Jitsi Conference Will Join: $url");
+      },
+      // Você pode adicionar outros listeners aqui se precisar (ex: onParticipantJoined)
+    ));
+    Logger.info("Jitsi listeners configured using addListener.");
   }
 
   void _setupSocketListeners() {
