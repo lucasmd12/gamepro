@@ -14,12 +14,10 @@ import '../models/call_history_model.dart';
 import '../models/call_model.dart';
 import '../utils/logger.dart';
 import 'auth_service.dart';
-import 'signaling_service.dart'; // ✅ AÇÃO 1: IMPORT ADICIONADO
+import 'signaling_service.dart';
 import 'socket_service.dart';
 
-// ✅ AÇÃO 2: CLASSE AGORA ESTENDE ChangeNotifier
 class VoIPService extends ChangeNotifier {
-  // Removido o padrão Singleton para ser gerenciado pelo Provider
   VoIPService();
 
   // --- DEPENDÊNCIAS ---
@@ -28,14 +26,15 @@ class VoIPService extends ChangeNotifier {
   late SignalingService _signalingService;
 
   // --- ESTADO DO JITSI ---
-  final _jitsiMeet = JitsiMeet.instance;
+  // ✅ AÇÃO 1: CORRIGIDA A INSTANCIAÇÃO DO JITSI
+  final _jitsiMeet = JitsiMeet();
 
   // --- ESTADO DO WEBRTC ---
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
-  MediaStream? get localStream => _localStream; // ✅ AÇÃO 3: GETTER ADICIONADO
+  MediaStream? get localStream => _localStream;
   MediaStream? _remoteStream;
-  MediaStream? get remoteStream => _remoteStream; // ✅ AÇÃO 3: GETTER ADICIONADO
+  MediaStream? get remoteStream => _remoteStream;
 
   // --- ESTADO GERAL DA CHAMADA ---
   bool _isInCall = false;
@@ -53,9 +52,10 @@ class VoIPService extends ChangeNotifier {
   // --- CALLBACKS E HELPERS ---
   Function(String)? _onCallEnded;
   Function(String)? _onCallStarted;
+  // ✅ AÇÃO 2: PROPRIEDADE 'onCallStateChanged' RE-ADICIONADA
+  Function(String)? onCallStateChanged;
   final Uuid _uuid = const Uuid();
 
-  // ✅ AÇÃO 4: MÉTODO DE INICIALIZAÇÃO CORRIGIDO
   void init(
       SocketService socketService,
       AuthService authService,
@@ -65,7 +65,7 @@ class VoIPService extends ChangeNotifier {
     _signalingService = signalingService;
     _setupSocketListeners();
     _setupSignalingListeners();
-    _setupJitsiListeners(); // Mover para cá para garantir que as dependências existam
+    _setupJitsiListeners();
   }
 
   Future<void> initialize() async {
@@ -87,11 +87,10 @@ class VoIPService extends ChangeNotifier {
     _onCallStarted = onCallStarted;
   }
 
-  // ✅ AÇÃO 5: JITSI LISTENER CORRIGIDO PARA A API ATUAL
   void _setupJitsiListeners() {
     _jitsiMeet.conferenceEvents.listen((event) {
       Logger.info("Jitsi Event: ${event.type}, Data: ${event.data}");
-      switch(event.type) {
+      switch (event.type) {
         case JitsiMeetConferenceEventType.conferenceJoined:
           _isInCall = true;
           _onCallStarted?.call(_currentRoomId ?? "");
@@ -110,12 +109,10 @@ class VoIPService extends ChangeNotifier {
   void _setupSocketListeners() {
     _socketService.incomingCallStream.listen((callData) {
       Logger.info("Received incoming call via Socket: $callData");
-      // A UI (IncomingCallOverlay) já escuta isso diretamente
     });
 
     _socketService.callAcceptedStream.listen((callData) {
       Logger.info("Call accepted via Socket: $callData");
-      // Lógica para iniciar a chamada quando aceita
     });
 
     _socketService.callRejectedStream.listen((callData) {
@@ -130,7 +127,6 @@ class VoIPService extends ChangeNotifier {
     });
   }
 
-  // ✅ AÇÃO 6: LÓGICA WEBRTC MOVIDA PARA DENTRO DA CLASSE
   void _setupSignalingListeners() {
     _signalingService.onRemoteSdp = (RTCSessionDescription sdp) {
       _peerConnection?.setRemoteDescription(sdp);
@@ -171,7 +167,6 @@ class VoIPService extends ChangeNotifier {
         final responseData = json.decode(response.body);
         _currentCall = Call.fromJson(responseData);
         Logger.info("Call initiation successful: $responseData");
-        // A lógica de iniciar a conexão WebRTC ou Jitsi será tratada após a aceitação
       } else {
         throw Exception('Falha ao iniciar chamada: ${response.body}');
       }
@@ -247,6 +242,49 @@ class VoIPService extends ChangeNotifier {
     }
   }
 
+  // ✅ AÇÃO 3: MÉTODO 'getCallHistory' RE-ADICIONADO
+  Future<List<CallHistoryModel>> getCallHistory({String? clanId, String? federationId}) async {
+    try {
+      final token = await _authService.token;
+      if (token == null) {
+        throw Exception('Token de autenticação não encontrado.');
+      }
+
+      String url = '${ApiConfig.baseUrl}/api/voip/call-history';
+      Map<String, String> queryParams = {};
+      if (clanId != null) {
+        queryParams['clanId'] = clanId;
+      }
+      if (federationId != null) {
+        queryParams['federationId'] = federationId;
+      }
+
+      if (queryParams.isNotEmpty) {
+        url += '?${Uri(queryParameters: queryParams).query}';
+      }
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        List<dynamic> body = json.decode(response.body);
+        return body.map((dynamic item) => CallHistoryModel.fromMap(item)).toList();
+      } else {
+        Logger.error('Falha ao carregar histórico de chamadas: ${response.statusCode} ${response.body}');
+        throw Exception('Falha ao carregar histórico de chamadas: ${response.body}');
+      }
+    } catch (e, stackTrace) {
+      Logger.error('Erro ao obter histórico de chamadas', error: e, stackTrace: stackTrace);
+      FirebaseCrashlytics.instance.recordError(e, stackTrace);
+      return [];
+    }
+  }
+
   // --- MÉTODOS DE CONTROLE DE MÍDIA (JITSI E WEBRTC) ---
 
   Future<void> startVoiceCall({
@@ -269,7 +307,7 @@ class VoIPService extends ChangeNotifier {
         token: token,
         configOverrides: {
           'startWithAudioMuted': false,
-          'startWithVideoMuted': true, // Forçar vídeo mudo
+          'startWithVideoMuted': true,
           'requireDisplayName': true,
           'enableWelcomePage': false,
           'prejoinPageEnabled': false,
@@ -287,7 +325,7 @@ class VoIPService extends ChangeNotifier {
       await _jitsiMeet.join(options);
     } catch (e) {
       Logger.error('Failed to start voice call: $e');
-      await endCall(); // Limpar estado se falhar
+      await endCall();
       throw Exception('Falha ao iniciar chamada de voz: $e');
     }
   }
@@ -296,7 +334,7 @@ class VoIPService extends ChangeNotifier {
     if (_currentCall?.id != null) {
       await endCallApi(callId: _currentCall!.id);
     }
-    
+
     if (_peerConnection != null) {
       await _closeWebRTCCall();
     } else {
@@ -321,7 +359,7 @@ class VoIPService extends ChangeNotifier {
     }
   }
 
-  // --- LÓGICA WEBRTC (DENTRO DA CLASSE) ---
+  // --- LÓGICA WEBRTC ---
 
   Future<void> _initiateWebRTCCall({required String targetId, required String callId}) async {
     try {
@@ -378,7 +416,6 @@ class VoIPService extends ChangeNotifier {
   }
 
   String formatCallDuration() {
-    // Implementar lógica de duração
     return '00:00';
   }
 
