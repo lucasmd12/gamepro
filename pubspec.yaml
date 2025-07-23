@@ -24,7 +24,7 @@ dependencies:
   
 
   # Jitsi Meet SDK Flutter (oficial)
-  jitsi_meet_flutter_sdk: ^1.0.2
+  jitsi_meet_flutter_sdk: ^10.3.0
 
   # Backend Communication
   http: ^1.2.1
