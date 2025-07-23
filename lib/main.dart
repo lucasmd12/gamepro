@@ -161,12 +161,15 @@ class FEDERACAOMADApp extends StatelessWidget {
         ChangeNotifierProvider<FederationService>(create: (context) => FederationService(apiService)),
         ChangeNotifierProvider<ClanService>(create: (context) => ClanService(apiService, authService)),
         Provider<MissionService>.value(value: missionService),
-        ChangeNotifierProvider<NotificationService>(create: (context) => NotificationService()),
+        // ✅ AÇÃO 1: CORRIGIDO O PROVIDER PARA NotificationService
+        Provider<NotificationService>(create: (context) => NotificationService()),
         ChangeNotifierProvider<VoIPService>(create: (context) {
           final voipService = VoIPService();
           final socketService = context.read<SocketService>();
           final authService = context.read<AuthService>();
-          voipService.init(socketService, authService);
+          // ✅ AÇÃO 2: ADICIONADO O SignalingService NA INICIALIZAÇÃO
+          final signalingService = context.read<SignalingService>();
+          voipService.init(socketService, authService, signalingService);
           voipService.initialize();
           return voipService;
         }),
