@@ -35,7 +35,7 @@ class UploadService {
       Logger.info('Iniciando upload de avatar...');
       
       // ✅✅✅ CORREÇÃO: A URL foi alterada para a rota correta do backend ✅✅✅
-      final url = Uri.parse('$_baseUrl/api/upload/profile-picture');
+      final url = Uri.parse('$_baseUrl/api/uploads/profile-picture');
       final request = http.MultipartRequest('POST', url);
       
       // Adicionar headers de autenticação
