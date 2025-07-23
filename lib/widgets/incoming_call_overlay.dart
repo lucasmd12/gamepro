@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/services/voip_service.dart';
-import 'package:lucasbeatsfederacao/services/notification_service.dart';
+// import 'package:lucasbeatsfederacao/services/notification_service.dart'; // ✅ AÇÃO 2: REMOVIDO IMPORT NÃO UTILIZADO
+import 'package:lucasbeatsfederacao/services/socket_service.dart'; // ✅ AÇÃO 1: ADICIONADO O IMPORT QUE FALTAVA
 import 'package:lucasbeatsfederacao/screens/call_page.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
 
@@ -40,23 +41,6 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
       },
     );
 
-    // O VoIPService já lida com o stream de chamadas recebidas do SocketService
-    // e dispara a notificação via seu próprio mecanismo ou callbacks.
-    // A lógica de exibição do overlay será ativada quando o VoIPService
-    // notificar que há uma chamada recebida.
-    // Para simplificar, vamos assumir que o VoIPService já tem um mecanismo
-    // para notificar a UI sobre chamadas recebidas que não sejam via Jitsi.
-    // Precisamos de um stream ou callback no VoIPService para chamadas P2P recebidas.
-    // Por enquanto, vamos usar o `_incomingCallData` diretamente do VoIPService
-    // se ele tiver um getter para isso, ou adicionar um callback específico.
-    // Como o `VoIPService` já tem `incomingCallStream` no `SocketService`,
-    // vamos fazer o `VoIPService` notificar o overlay.
-
-    // Adicionar um listener para o stream de chamadas recebidas do SocketService
-    // que o VoIPService já está escutando.
-    // O VoIPService precisa expor um stream ou ChangeNotifier para que o overlay possa reagir.
-    // Vamos adicionar um callback no VoIPService para isso.
-
     // Temporariamente, vamos usar o `SocketService.incomingCallStream` diretamente aqui
     // para que o overlay possa reagir. Idealmente, o VoIPService deveria orquestrar isso.
     final socketService = Provider.of<SocketService>(context, listen: false);
@@ -80,21 +64,11 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    // =================================================================================
-    // CORREÇÃO APLICADA AQUI
-    // O Stack foi envolvido por um widget Directionality.
-    // Isso fornece a direção do texto (esquerda-para-direita) que o Stack precisa
-    // para resolver alinhamentos direcionais, eliminando o erro.
-    // =================================================================================
     return Directionality(
-      textDirection: TextDirection.ltr, // Fornece a "bússola" para os widgets filhos
+      textDirection: TextDirection.ltr,
       child: Stack(
-        // O alignment do Stack (implícito ou explícito) agora funcionará corretamente.
         children: [
-          // A base do Stack é o 'child', ou seja, todo o seu MaterialApp.
           widget.child,
-
-          // Se houver dados de uma chamada recebida, mostramos o widget de notificação.
           if (_incomingCallData != null)
             Positioned(
               top: 0,
@@ -114,11 +88,6 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
   }
 }
 
-// =================================================================================
-// O widget _CallNotificationWidget não precisa de alterações.
-// Ele já está dentro de um contexto Material por causa do `Material` widget
-// em seu próprio build, mas o erro original acontecia no Stack pai.
-// =================================================================================
 class _CallNotificationWidget extends StatefulWidget {
   final String callId;
   final String callerId;
