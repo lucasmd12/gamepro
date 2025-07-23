@@ -16,7 +16,7 @@ class User {
   final String? federationTag; // Adicionado: Tag da federação
   final Role federationRole; // Adicionado: Papel na federação
   final Role role; // Alterado para Role
-  final bool online;
+  bool isOnline; // ✅ AÇÃO 1: MUDADO DE 'final bool online' PARA 'bool isOnline'
   final DateTime? ultimaAtividade; // Pode ser nulo
   final DateTime? lastSeen; // Pode ser nulo
   final DateTime? createdAt; // Adicionado: Data de criação do usuário
@@ -36,7 +36,7 @@ class User {
     this.federationTag,
     this.federationRole = Role.member,
     this.role = Role.user,
-    this.online = false,
+    this.isOnline = false, // ✅ AÇÃO 2: ATUALIZADO O CONSTRUTOR
     this.ultimaAtividade,
     this.lastSeen,
     this.createdAt,
@@ -111,7 +111,7 @@ class User {
       federationTag: _getTagFromMap(federationData),
       federationRole: rawFederationRole is String ? roleFromString(rawFederationRole) : Role.member,
       role: rawRole is String ? roleFromString(rawRole) : Role.user,
-      online: json['online'] as bool? ?? false,
+      isOnline: json['isOnline'] as bool? ?? json['online'] as bool? ?? false, // ✅ AÇÃO 3: AJUSTADO O fromJson PARA ACEITAR 'isOnline' OU 'online'
       ultimaAtividade: _parseDateTime(json['ultimaAtividade']),
       lastSeen: _parseDateTime(json['lastSeen']),
       createdAt: _parseDateTime(json['createdAt']),
@@ -134,17 +134,15 @@ class User {
       'federationTag': federationTag,
       'federationRole': roleToString(federationRole),
       'role': roleToString(role),
-      'online': online,
+      'isOnline': isOnline, // ✅ AÇÃO 4: ATUALIZADO O toJson
       'ultimaAtividade': ultimaAtividade?.toIso8601String(),
       'lastSeen': lastSeen?.toIso8601String(),
       'createdAt': createdAt?.toIso8601String(),
     };
   }
 
-  bool get isOnline => online;
+  // ✅ AÇÃO 5: REMOVIDO O GETTER REDUNDANTE, POIS O CAMPO AGORA É PÚBLICO
   String? get tag => federationTag;
   String? get clan => clanId;
   String? get federation => federationId;
 }
-
-
