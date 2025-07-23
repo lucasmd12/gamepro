@@ -157,25 +157,35 @@ class _FederationDetailScreenState extends State<FederationDetailScreen> {
         appBar: AppBar(
           title: Text(widget.federation.name),
           actions: [
-            if (widget.federation.tag != null && widget.federation.tag!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Center(
-                  child: Text(
-                    '[${widget.federation.tag!}]',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
+            // Botão para iniciar chamada Jitsi (apenas áudio)
+            if (canManage)
+              IconButton(
+                icon: const Icon(Icons.call_end, color: Colors.green), // Ícone de chamada
+                onPressed: () async {
+                  final voipService = Provider.of<VoIPService>(context, listen: false);
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final currentUser = authProvider.currentUser;
+
+                  if (currentUser != null) {
+                    try {
+                      // Gerar um roomId único para a federação
+                      final roomId = VoIPService.generateRoomId(prefix: 'federation', entityId: widget.federation.id);
+                      await voipService.startVoiceCall(
+                        roomId: roomId,
+                        displayName: currentUser.username,
+                        isAudioOnly: true, // Forçar áudio apenas
+                      );
+                    } catch (e, s) {
+                      Logger.error("Erro ao iniciar chamada Jitsi para a federação:", error: e, stackTrace: s);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Erro ao iniciar chamada: ${e.toString()}"),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                tooltip: 'Iniciar Chamada de Voz da Federação',
               ),
-          ],
-          bottom: TabBar(
-            tabs: tabs, // Usa a lista de abas dinâmica
-          ),
-        ),
-        body: TabBarView(
-          children: tabViews, // Usa a lista de views dinâmica
-        ),
-      ),
-    );
-  }
-}
+            if (widget.federation.tag != null && widget.federation.tag!.isNotEmpty)
