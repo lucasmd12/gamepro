@@ -175,6 +175,37 @@ class _ClanDetailScreenState extends State<ClanDetailScreen> {
         appBar: AppBar(
           title: Text(widget.clan.name),
           actions: [
+                        // Botão para iniciar chamada Jitsi (apenas áudio)
+            if (canManage)
+              IconButton(
+                icon: const Icon(Icons.call_end, color: Colors.green), // Ícone de chamada
+                onPressed: () async {
+                  final voipService = Provider.of<VoIPService>(context, listen: false);
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final currentUser = authProvider.currentUser;
+
+                  if (currentUser != null) {
+                    try {
+                      // Gerar um roomId único para o clã
+                      final roomId = VoIPService.generateRoomId(prefix: 'clan', entityId: widget.clan.id);
+                      await voipService.startVoiceCall(
+                        roomId: roomId,
+                        displayName: currentUser.username,
+                        isAudioOnly: true, // Forçar áudio apenas
+                      );
+                    } catch (e, s) {
+                      Logger.error("Erro ao iniciar chamada Jitsi para o clã:", error: e, stackTrace: s);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Erro ao iniciar chamada: ${e.toString()}"),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                tooltip: 'Iniciar Chamada de Voz do Clã',
+              ),
             //  Botão condicional para declarar guerra
             if (canDeclareWar)
               IconButton(
