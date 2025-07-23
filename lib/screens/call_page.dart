@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider';
+import 'package:provider/provider.dart';
 import 'package:lucasbeatsfederacao/providers/call_provider.dart';
 import 'package:lucasbeatsfederacao/services/voip_service.dart';
 import 'package:lucasbeatsfederacao/services/auth_service.dart';
@@ -26,8 +26,8 @@ class _CallPageState extends State<CallPage> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  RTCVideoRenderer _localRenderer = RTCVideoRenderer();
-  RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
+  final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
+  final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
 
   @override
   void initState() {
@@ -49,22 +49,45 @@ class _CallPageState extends State<CallPage> with TickerProviderStateMixin {
     _remoteRenderer.initialize();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final voipService = Provider.of<VoIPService>(context, listen: false);
-      // Atualizar renderers com os streams do VoIPService
-      voipService.localStream?.getAudioTracks().forEach((track) {
-        _localRenderer.srcObject = voipService.localStream;
-      });
-      voipService.remoteStream?.getAudioTracks().forEach((track) {
-        _remoteRenderer.srcObject = voipService.remoteStream;
-      });
-
-      // Se a chamada não estiver em andamento (P2P), o VoIPService já deve ter iniciado a conexão
-      // Se for Jitsi, o VoIPService já terá lidado com o join
+      // ✅ AÇÃO 1: GARANTIR QUE O CONTEXTO É VÁLIDO ANTES DE USAR O PROVIDER
+      if (mounted) {
+        final voipService = Provider.of<VoIPService>(context, listen: false);
+        // Atualizar renderers com os streams do VoIPService
+        // Adicionando verificação de nulidade para os streams
+        if (voipService.localStream != null) {
+          _localRenderer.srcObject = voipService.localStream;
+        }
+        if (voipService.remoteStream != null) {
+          _remoteRenderer.srcObject = voipService.remoteStream;
+        }
+        
+        // Listener para quando os streams forem atualizados no VoIPService
+        voipService.addListener(_updateRenderers);
+      }
     });
+  }
+  
+  // ✅ AÇÃO 2: CRIADO MÉTODO SEPARADO PARA ATUALIZAR RENDERERS
+  void _updateRenderers() {
+    if (mounted) {
+      final voipService = Provider.of<VoIPService>(context, listen: false);
+      setState(() {
+        if (voipService.localStream != null) {
+          _localRenderer.srcObject = voipService.localStream;
+        }
+        if (voipService.remoteStream != null) {
+          _remoteRenderer.srcObject = voipService.remoteStream;
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
+    // ✅ AÇÃO 3: REMOVER O LISTENER PARA EVITAR MEMORY LEAKS
+    if (mounted) {
+      Provider.of<VoIPService>(context, listen: false).removeListener(_updateRenderers);
+    }
     _pulseController.dispose();
     _localRenderer.dispose();
     _remoteRenderer.dispose();
@@ -75,6 +98,7 @@ class _CallPageState extends State<CallPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      // ✅ AÇÃO 4: O Consumer2 ESTÁ CORRETO, O ERRO DEVE SER CASCATA. NENHUMA MUDANÇA AQUI.
       body: Consumer2<CallProvider, VoIPService>(
         builder: (context, callProvider, voipService, child) {
           return SafeArea(
@@ -317,5 +341,3 @@ class _CallPageState extends State<CallPage> with TickerProviderStateMixin {
     }
   }
 }
-
-
