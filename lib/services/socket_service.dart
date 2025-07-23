@@ -10,6 +10,9 @@ class SocketService {
   final _secureStorage = const FlutterSecureStorage();
   final String _socketUrl = backendBaseUrl; 
 
+  // ✅ AÇÃO 1: ADICIONADO O MAPA PÚBLICO PARA RASTREAR USUÁRIOS CONECTADOS
+  final Map<String, dynamic> connectedUsers = {};
+
   final _messageController = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get messageStream => _messageController.stream;
 
@@ -100,6 +103,8 @@ class SocketService {
         if (kDebugMode) {
           Logger.info('Socket disconnected: $reason');
         }
+        // ✅ AÇÃO 2: LIMPAR A LISTA DE USUÁRIOS NA DESCONEXÃO
+        connectedUsers.clear();
         _connectionStatusController.add(false);
       });
 
@@ -199,11 +204,15 @@ class SocketService {
     });
     _socket!.on("user_online", (userId) {
       if (userId is String) {
+        // ✅ AÇÃO 3: ATUALIZAR O MAPA DE USUÁRIOS CONECTADOS
+        connectedUsers[userId] = true; // O valor pode ser qualquer coisa, só a chave importa
         _userOnlineController.add(userId);
       }
     });
     _socket!.on("user_offline", (userId) {
       if (userId is String) {
+        // ✅ AÇÃO 4: ATUALIZAR O MAPA DE USUÁRIOS CONECTADOS
+        connectedUsers.remove(userId);
         _userOfflineController.add(userId);
       }
     });
@@ -323,5 +332,3 @@ class SocketService {
     _socket = null;
   }
 }
-
-
