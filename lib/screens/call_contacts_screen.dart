@@ -26,23 +26,31 @@ class _CallContactsScreenState extends State<CallContactsScreen> {
     try {
       setState(() => _isLoading = true);
 
+      final socketService = Provider.of<SocketService>(context, listen: false);
       final apiService = Provider.of<ApiService>(context, listen: false);
+
+      // Solicitar a lista de usuários online do backend via API REST
       final response = await apiService.get("/api/users/online");
 
-      if (response != null && response['membros'] != null) {
-        _membros = (response['membros'] as List).map((userJson) {
-          // Mapear fotoPerfil para avatar para o modelo User
+      if (response != null && response["membros"] != null) {
+        _membros = (response["membros"] as List).map((userJson) {
           final Map<String, dynamic> userMap = Map<String, dynamic>.from(userJson);
-          if (userMap.containsKey('fotoPerfil')) {
-            userMap['avatar'] = userMap['fotoPerfil'];
+          if (userMap.containsKey("fotoPerfil")) {
+            userMap["avatar"] = userMap["fotoPerfil"];
           }
           return User.fromJson(userMap);
         }).toList();
       }
 
+      // Atualizar o status online/offline com base no SocketService
+      final connectedUserIds = socketService.connectedUsers.keys.toList();
+      for (var user in _membros) {
+        user.isOnline = connectedUserIds.contains(user.id);
+      }
+
       setState(() => _isLoading = false);
     } catch (e) {
-      Logger.error('Erro ao carregar usuários online: $e');
+      Logger.error("Erro ao carregar usuários online: $e");
       setState(() => _isLoading = false);
     }
   }
@@ -158,15 +166,15 @@ class _CallContactsScreenState extends State<CallContactsScreen> {
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.green,
+                              decoration: BoxDecoration(
+                                color: user.isOnline ? Colors.green : Colors.red,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Online',
-                              style: TextStyle(color: Colors.green),
+                            Text(
+                              user.isOnline ? 'Online' : 'Offline',
+                              style: TextStyle(color: user.isOnline ? Colors.green : Colors.red),
                             ),
                           ],
                         ),
