@@ -1,3 +1,5 @@
+import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -23,15 +25,18 @@ class VoIPService extends ChangeNotifier {
   Function(String)? _onCallStarted;
 
   late SocketService _socketService;
-  late AuthService _authService; // Adicionar AuthService
+  late AuthService _authService;
+  late SignalingService _signalingService; // Adicionar SignalingService
 
   bool get isInCall => _isInCall;
   String? get currentRoomId => _currentRoomId;
 
-  void init(SocketService socketService, AuthService authService) {
+  void init(SocketService socketService, AuthService authService, SignalingService signalingService) {
     _socketService = socketService;
-    _authService = authService; // Inicializar AuthService
+    _authService = authService;
+    _signalingService = signalingService; // Inicializar SignalingService
     _setupSocketListeners();
+    _setupSignalingListeners(); // Configurar listeners do SignalingService
   }
 
   // Configurar callbacks
@@ -68,6 +73,32 @@ class VoIPService extends ChangeNotifier {
   }
 
   void _setupJitsiListeners() {
+    _jitsiMeet.addListener(
+      JitsiMeetingListener(
+        onConferenceJoined: (url) {
+          Logger.info("Jitsi Conference Joined: $url");
+          _isInCall = true;
+          _onCallStarted?.call(_currentRoomId ?? "");
+          notifyListeners();
+        },
+        onConferenceTerminated: (url, error) {
+          Logger.info("Jitsi Conference Terminated: $url, error: $error");
+          endCall(); // Encerrar a chamada quando a conferência termina
+        },
+        onConferenceWillJoin: (url) {
+          Logger.info("Jitsi Conference Will Join: $url");
+        },
+        onParticipantJoined: (participant) {
+          Logger.info("Jitsi Participant Joined: ${participant.displayName}");
+        },
+        onParticipantLeft: (participant) {
+          Logger.info("Jitsi Participant Left: ${participant.displayName}");
+        },
+        onReadyToClose: () {
+          Logger.info("Jitsi Ready to Close");
+        },
+      ),
+    );
     Logger.info("Jitsi listeners configured");
   }
 
@@ -466,5 +497,396 @@ class VoIPService extends ChangeNotifier {
     }
   }
 }
+
+
+
+
+  RTCPeerConnection? _peerConnection;
+  MediaStream? _localStream;
+  MediaStream? _remoteStream;
+  final Uuid _uuid = const Uuid();
+
+
+
+
+  // --- WebRTC P2P Methods ---
+
+  Future<void> _initiateWebRTCCall({required String targetId, required String callId}) async {
+    try {
+      _localStream = await navigator.mediaDevices.getUserMedia({
+        'audio': true, 'video': false
+      });
+
+      _peerConnection = await createPeerConnection({
+        'iceServers': [
+          {'urls': 'stun:stun.l.google.com:19302'},
+          // Adicionar mais STUN/TURN servers se necessário
+        ]
+      }, {});
+
+      _peerConnection!.addStream(_localStream!);
+
+      _peerConnection!.onIceCandidate = (RTCIceCandidate candidate) {
+        if (candidate != null) {
+          _socketService.sendWebRTCSignal({
+            'targetUserId': targetId,
+            'signalType': 'iceCandidate',
+            'signalData': candidate.toMap(),
+          });
+        }
+      };
+
+      _peerConnection!.onAddStream = (MediaStream stream) {
+        _remoteStream = stream;
+        Logger.info("Remote stream added");
+        // TODO: Notificar UI para exibir o stream remoto (apenas áudio)
+      };
+
+      final offer = await _peerConnection!.createOffer({
+        'offerToReceiveAudio': true,
+        'offerToReceiveVideo': false,
+      });
+      await _peerConnection!.setLocalDescription(offer);
+
+      _socketService.sendWebRTCSignal({
+        'targetUserId': targetId,
+        'signalType': 'offer',
+        'signalData': offer.toMap(),
+      });
+
+      Logger.info("WebRTC offer sent to $targetId");
+    } catch (e, stackTrace) {
+      Logger.error("Error initiating WebRTC call", error: e, stackTrace: stackTrace);
+      FirebaseCrashlytics.instance.recordError(e, stackTrace);
+      rethrow;
+    }
+  }
+
+  Future<void> _handleWebRTCSignal(Map<String, dynamic> signalData) async {
+    final signalType = signalData['signalType'];
+    final data = signalData['signalData'];
+    final senderUserId = signalData['senderUserId'];
+
+    if (_peerConnection == null) {
+      // Se não há peerConnection, é uma oferta inicial
+      await _initiateWebRTCCall(targetId: senderUserId, callId: _uuid.v4()); // Criar um callId temporário para o setup
+    }
+
+    switch (signalType) {
+      case 'offer':
+        final offer = RTCSessionDescription(data['sdp'], data['type']);
+        await _peerConnection!.setRemoteDescription(offer);
+        final answer = await _peerConnection!.createAnswer({
+          'offerToReceiveAudio': true,
+          'offerToReceiveVideo': false,
+        });
+        await _peerConnection!.setLocalDescription(answer);
+        _socketService.sendWebRTCSignal({
+          'targetUserId': senderUserId,
+          'signalType': 'answer',
+          'signalData': answer.toMap(),
+        });
+        Logger.info("WebRTC answer sent to $senderUserId");
+        break;
+      case 'answer':
+        final answer = RTCSessionDescription(data['sdp'], data['type']);
+        await _peerConnection!.setRemoteDescription(answer);
+        Logger.info("WebRTC answer received from $senderUserId");
+        break;
+      case 'iceCandidate':
+        final candidate = RTCIceCandidate(
+          data['candidate'],
+          data['sdpMid'],
+          data['sdpMLineIndex'],
+        );
+        await _peerConnection!.addCandidate(candidate);
+        Logger.info("WebRTC ICE candidate received from $senderUserId");
+        break;
+      default:
+        Logger.warn("Unknown WebRTC signal type: $signalType");
+    }
+  }
+
+  Future<void> _closeWebRTCCall() async {
+    _peerConnection?.close();
+    _peerConnection = null;
+    _localStream?.dispose();
+    _localStream = null;
+    _remoteStream?.dispose();
+    _remoteStream = null;
+    Logger.info("WebRTC call closed");
+  }
+
+  // Modificar _setupSocketListeners para lidar com sinais WebRTC
+  @override
+  void _setupSocketListeners() {
+    super._setupSocketListeners(); // Chamar o método pai para manter listeners existentes
+    _socketService.webrtcSignalStream.listen((signalData) {
+      Logger.info("Received WebRTC signal via Socket: $signalData");
+      _handleWebRTCSignal(signalData);
+    });
+  }
+
+  // Modificar endCall para fechar também a conexão WebRTC
+  @override
+  Future<void> endCall() async {
+    await _closeWebRTCCall();
+    super.endCall();
+  }
+
+  // Modificar initiateCall para diferenciar Jitsi de WebRTC P2P
+  @override
+  Future<void> initiateCall({required String targetId, required String displayName, bool isVideoCall = false}) async {
+    if (isVideoCall) {
+      Logger.warn("Video calls are currently inhibited. Initiating audio-only call.");
+      // return; // Ou lançar um erro se não quiser permitir de forma alguma
+    }
+
+    Logger.info("Initiating call to $targetId");
+    try {
+      final token = await _authService.token;
+      if (token == null) {
+        throw Exception("Token de autenticação não encontrado.");
+      }
+
+      // Lógica para decidir se é Jitsi ou WebRTC P2P
+      // Por enquanto, vamos assumir que chamadas 1x1 são WebRTC P2P
+      // e chamadas de clã/federação são Jitsi
+      // Para 1x1, o Backend ainda precisa criar o registro da chamada
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}/api/voip/initiate-call"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: json.encode({
+          "receiverId": targetId, // Backend espera receiverId
+          "callType": "voice", // Sempre voz, conforme a observação
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        Logger.info("Call initiation successful: $responseData");
+        final callId = responseData['callId'];
+        // Iniciar a conexão WebRTC P2P após o Backend registrar a chamada
+        await _initiateWebRTCCall(targetId: targetId, callId: callId);
+      } else {
+        Logger.error("Failed to initiate call: ${response.statusCode} ${response.body}");
+        throw Exception("Falha ao iniciar chamada: ${response.body}");
+      }
+    } catch (e, stackTrace) {
+      Logger.error("Error initiating call: $e", stackTrace: stackTrace);
+      FirebaseCrashlytics.instance.recordError(e, stackTrace);
+      rethrow;
+    }
+  }
+
+  // Modificar acceptCall para lidar com WebRTC P2P
+  @override
+  Future<void> acceptCall({required String callId, required String roomId, required String displayName, bool isVideoCall = false}) async {
+    if (isVideoCall) {
+      Logger.warn("Video calls are currently inhibited. Accepting as audio-only call.");
+    }
+
+    Logger.info("Accepting call for room $roomId");
+    try {
+      final token = await _authService.token;
+      if (token == null) {
+        throw Exception("Token de autenticação não encontrado.");
+      }
+
+      final response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}/api/voip/accept-call"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: json.encode({
+          "callId": callId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        Logger.info("Call acceptance successful: $responseData");
+        // Se for uma chamada Jitsi, iniciar Jitsi
+        if (responseData['roomName'] != null && responseData['jitsiToken'] != null) {
+          await startVoiceCall(roomId: responseData['roomName'], displayName: displayName, token: responseData['jitsiToken'], isAudioOnly: true);
+        } else {
+          // Se for WebRTC P2P, o _handleWebRTCSignal já deve ter iniciado o peerConnection
+          // Apenas garantir que o estado da chamada seja atualizado
+          _isInCall = true;
+          _currentRoomId = callId; // Usar o callId como roomId para P2P
+          _onCallStarted?.call(callId);
+          notifyListeners();
+          Logger.info("WebRTC P2P call accepted.");
+        }
+      } else {
+        Logger.error("Failed to accept call: ${response.statusCode} ${response.body}");
+        throw Exception("Falha ao aceitar chamada: ${response.body}");
+      }
+    } catch (e, stackTrace) {
+      Logger.error("Error accepting call: $e", stackTrace: stackTrace);
+      FirebaseCrashlytics.instance.recordError(e, stackTrace);
+      rethrow;
+    }
+  }
+
+  // Modificar startVoiceCall para inibir vídeo no Jitsi
+  @override
+  Future<void> startVoiceCall({
+    required String roomId,
+    required String displayName,
+    String? serverUrl,
+    String? token,
+    bool isAudioOnly = true, // Forçar true para inibir vídeo
+  }) async {
+    try {
+      if (_isInCall) throw Exception("Já existe uma chamada em andamento");
+
+      _currentRoomId = roomId;
+
+      final options = JitsiMeetConferenceOptions(
+        serverURL: serverUrl ?? 'https://meet.jit.si',
+        room: roomId,
+        token: token,
+        configOverrides: {
+          'startWithAudioMuted': false,
+          'startWithVideoMuted': true, // Forçar vídeo mudo
+          'requireDisplayName': true,
+          'enableWelcomePage': false,
+          'enableClosePage': false,
+          'prejoinPageEnabled': false,
+          'enableInsecureRoomNameWarning': false
+        },
+        featureFlags: {
+          'unsaferoomwarning.enabled': false,
+          'security-options.enabled': false,
+          'invite.enabled': false,
+          'meeting-name.enabled': false,
+          'calendar.enabled': false,
+          'recording.enabled': false,
+          'live-streaming.enabled': false,
+          'tile-view.enabled': true,
+          'pip.enabled': true,
+          'toolbox.alwaysVisible': false,
+          'filmstrip.enabled': true,
+          'add-people.enabled': false,
+          'server-url-change.enabled': false,
+          'chat.enabled': true,
+          'raise-hand.enabled': true,
+          'kick-out.enabled': false,
+          'lobby-mode.enabled': false,
+          'notifications.enabled': true,
+          'meeting-password.enabled': false,
+          'close-captions.enabled': false,
+          'reactions.enabled': true,
+          'video-mute.enabled': true, // Garantir que o botão de vídeo mudo esteja disponível
+          'video-share.enabled': false, // Desabilitar compartilhamento de vídeo
+          'screen-sharing.enabled': true, // Habilitar compartilhamento de tela
+        },
+        userInfo: JitsiMeetUserInfo(displayName: displayName),
+      );
+
+      await _jitsiMeet.join(options);
+      _isInCall = true;
+      _onCallStarted?.call(roomId);
+      notifyListeners();
+      Logger.info("Voice call started for room: $roomId");
+    } catch (e, stackTrace) {
+      _currentRoomId = null;
+      Logger.error('Failed to start voice call: $e', stackTrace: stackTrace);
+      FirebaseCrashlytics.instance.recordError(e, stackTrace);
+      throw Exception('Falha ao iniciar chamada de voz: $e');
+    }
+  }
+
+  // Remover startVideoCall, pois o vídeo está inibido
+  @override
+  Future<void> startVideoCall({
+    required String roomId,
+    required String displayName,
+    String? serverUrl,
+    String? token,
+  }) async {
+    Logger.warn("startVideoCall foi chamado, mas chamadas de vídeo estão inibidas. Iniciando como áudio-apenas.");
+    await startVoiceCall(
+      roomId: roomId,
+      displayName: displayName,
+      serverUrl: serverUrl,
+      token: token,
+      isAudioOnly: true,
+    );
+  }
+
+  // Modificar joinJitsiMeeting para inibir vídeo
+  @override
+  Future<void> joinJitsiMeeting({
+    required String roomName,
+    required String userDisplayName,
+    String? userAvatarUrl,
+    String? password,
+  }) async {
+    try {
+      final options = JitsiMeetConferenceOptions(
+        serverURL: 'https://meet.jit.si',
+        room: roomName,
+        configOverrides: {
+          'startWithVideoMuted': true, // Forçar vídeo mudo
+          'startWithAudioMuted': false,
+        },
+        userInfo: JitsiMeetUserInfo(
+          displayName: userDisplayName,
+          avatar: userAvatarUrl,
+        ),
+      );
+
+      await _jitsiMeet.join(options);
+      _isInCall = true;
+      _currentRoomId = roomName;
+      notifyListeners();
+      Logger.info("Joined Jitsi meeting: $roomName");
+    } catch (error, stackTrace) {
+      Logger.error('Erro ao entrar na reunião Jitsi: $error', stackTrace: stackTrace);
+      FirebaseCrashlytics.instance.recordError(error, stackTrace);
+      rethrow;
+    }
+  }
+
+  // Remover toggleVideo, pois o vídeo está inibido
+  @override
+  Future<void> toggleVideo() async {
+    Logger.warn("toggleVideo foi chamado, mas chamadas de vídeo estão inibidas.");
+    // Não faz nada ou lança um erro, dependendo da necessidade
+  }
+
+  // Adicionar método para obter o stream de áudio local
+  MediaStream? get localStream => _localStream;
+  MediaStream? get remoteStream => _remoteStream;
+
+  // Adicionar dispose para WebRTC
+  @override
+  void dispose() {
+    _closeWebRTCCall(); // Fechar conexão WebRTC ao descartar o serviço
+    super.dispose();
+  }
+
+
+
+
+
+
+  void _setupSignalingListeners() {
+    _signalingService.onRemoteSdp = (RTCSessionDescription sdp) {
+      _peerConnection?.setRemoteDescription(sdp);
+      Logger.info("Remote SDP set from SignalingService.");
+    };
+
+    _signalingService.onRemoteIceCandidate = (RTCIceCandidate candidate) {
+      _peerConnection?.addCandidate(candidate);
+      Logger.info("Remote ICE candidate added from SignalingService.");
+    };
+  }
 
 
