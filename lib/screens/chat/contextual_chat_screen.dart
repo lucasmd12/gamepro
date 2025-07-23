@@ -7,6 +7,7 @@ import 'package:lucasbeatsfederacao/utils/logger.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:lucasbeatsfederacao/services/voip_service.dart'; // ✅ AÇÃO 1: ADICIONADO O IMPORT QUE FALTAVA
 
 class ContextualChatScreen extends StatefulWidget {
   final String chatContext; // e.g., 'global', 'federation_id', 'clan_id'
@@ -399,5 +400,3 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
     );
   }
 }
-
-
