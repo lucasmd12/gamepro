@@ -1,7 +1,8 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:gamepro/services/api_service.dart'; // Import adicionado
-import 'dart:async'; // Import adicionado
+// ✅ AÇÃO 1: CORRIGIDO O NOME DO PACOTE DE 'gamepro' PARA 'lucasbeatsfederacao'
+import 'package:lucasbeatsfederacao/services/api_service.dart'; 
+import 'dart:async';
 
 class NotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -11,8 +12,8 @@ class NotificationService {
   final _onNotificationReceived = StreamController<RemoteMessage>.broadcast();
   Stream<RemoteMessage> get onNotificationReceived => _onNotificationReceived.stream;
 
-  NotificationService._privateConstructor(this._apiService); // Construtor modificado
-  static final NotificationService _instance = NotificationService._privateConstructor(ApiService()); // Instância com ApiService
+  NotificationService._privateConstructor(this._apiService);
+  static final NotificationService _instance = NotificationService._privateConstructor(ApiService());
 
   factory NotificationService() {
     return _instance;
@@ -130,4 +131,3 @@ class NotificationService {
     _onNotificationReceived.close();
   }
 }
-
