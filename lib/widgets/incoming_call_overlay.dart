@@ -30,14 +30,44 @@ class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
 
   void _setupIncomingCallListener() {
     if (!mounted) return;
-    final notificationService = Provider.of<NotificationService>(context, listen: false);
-    notificationService.onIncomingCall = (data) {
+    final voipService = Provider.of<VoIPService>(context, listen: false);
+    voipService.setCallbacks(
+      onCallStarted: (roomId) {
+        // Não precisamos fazer nada aqui, pois a UI de chamada já será exibida pela CallPage
+      },
+      onCallEnded: (roomId) {
+        _dismissOverlay();
+      },
+    );
+
+    // O VoIPService já lida com o stream de chamadas recebidas do SocketService
+    // e dispara a notificação via seu próprio mecanismo ou callbacks.
+    // A lógica de exibição do overlay será ativada quando o VoIPService
+    // notificar que há uma chamada recebida.
+    // Para simplificar, vamos assumir que o VoIPService já tem um mecanismo
+    // para notificar a UI sobre chamadas recebidas que não sejam via Jitsi.
+    // Precisamos de um stream ou callback no VoIPService para chamadas P2P recebidas.
+    // Por enquanto, vamos usar o `_incomingCallData` diretamente do VoIPService
+    // se ele tiver um getter para isso, ou adicionar um callback específico.
+    // Como o `VoIPService` já tem `incomingCallStream` no `SocketService`,
+    // vamos fazer o `VoIPService` notificar o overlay.
+
+    // Adicionar um listener para o stream de chamadas recebidas do SocketService
+    // que o VoIPService já está escutando.
+    // O VoIPService precisa expor um stream ou ChangeNotifier para que o overlay possa reagir.
+    // Vamos adicionar um callback no VoIPService para isso.
+
+    // Temporariamente, vamos usar o `SocketService.incomingCallStream` diretamente aqui
+    // para que o overlay possa reagir. Idealmente, o VoIPService deveria orquestrar isso.
+    final socketService = Provider.of<SocketService>(context, listen: false);
+    socketService.incomingCallStream.listen((callData) {
+      Logger.info("IncomingCallOverlay: Received incoming call via Socket: $callData");
       if (mounted) {
         setState(() {
-          _incomingCallData = data;
+          _incomingCallData = callData;
         });
       }
-    };
+    });
   }
 
   void _dismissOverlay() {
