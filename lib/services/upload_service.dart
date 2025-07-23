@@ -34,7 +34,7 @@ class UploadService {
     try {
       Logger.info('Iniciando upload de avatar...');
       
-      // ✅✅✅ CORREÇÃO: A URL foi alterada para a rota correta do backend ✅✅✅
+      // ✅ CORRIGIDO
       final url = Uri.parse('$_baseUrl/api/uploads/profile-picture');
       final request = http.MultipartRequest('POST', url);
       
@@ -96,7 +96,8 @@ class UploadService {
     try {
       Logger.info('Iniciando upload de imagem de missão...');
       
-      final url = Uri.parse('$_baseUrl/api/upload/multiple');
+      // ✅ CORRIGIDO
+      final url = Uri.parse('$_baseUrl/api/uploads/multiple');
       final request = http.MultipartRequest('POST', url);
       
       // Adicionar headers de autenticação
@@ -167,7 +168,8 @@ class UploadService {
 
       Logger.info('Iniciando upload múltiplo de ${files.length} arquivo(s)...');
       
-      final url = Uri.parse('$_baseUrl/api/upload/multiple');
+      // ✅ CORRIGIDO
+      final url = Uri.parse('$_baseUrl/api/uploads/multiple');
       final request = http.MultipartRequest('POST', url);
       
       // Adicionar headers de autenticação
@@ -223,7 +225,8 @@ class UploadService {
     try {
       Logger.info('Deletando arquivo: $publicId');
       
-      final url = Uri.parse('$_baseUrl/api/upload/delete/$publicId');
+      // ✅ CORRIGIDO
+      final url = Uri.parse('$_baseUrl/api/uploads/delete/$publicId');
       final headers = await _getHeaders();
       
       final response = await http.delete(
@@ -265,7 +268,8 @@ class UploadService {
     try {
       Logger.info('Obtendo informações do arquivo: $publicId');
       
-      final url = Uri.parse('$_baseUrl/api/upload/info/$publicId');
+      // ✅ CORRIGIDO
+      final url = Uri.parse('$_baseUrl/api/uploads/info/$publicId');
       final headers = await _getHeaders();
       
       final response = await http.get(
@@ -306,7 +310,8 @@ class UploadService {
     try {
       Logger.info('Listando arquivos da pasta: $folder');
       
-      final url = Uri.parse('$_baseUrl/api/upload/list?folder=$folder&maxResults=$maxResults');
+      // ✅ CORRIGIDO
+      final url = Uri.parse('$_baseUrl/api/uploads/list?folder=$folder&maxResults=$maxResults');
       final headers = await _getHeaders();
       
       final response = await http.get(
@@ -347,7 +352,8 @@ class UploadService {
     try {
       Logger.info('Obtendo estatísticas de upload...');
       
-      final url = Uri.parse('$_baseUrl/api/upload/stats');
+      // ✅ CORRIGIDO
+      final url = Uri.parse('$_baseUrl/api/uploads/stats');
       final headers = await _getHeaders();
       
       final response = await http.get(
@@ -388,7 +394,8 @@ class UploadService {
     try {
       Logger.info('Testando conexão com Cloudinary...');
       
-      final url = Uri.parse('$_baseUrl/api/upload/test');
+      // ✅ CORRIGIDO
+      final url = Uri.parse('$_baseUrl/api/uploads/test');
       final headers = await _getHeaders();
       
       final response = await http.get(
@@ -430,7 +437,8 @@ class UploadService {
       Logger.info('Gerando URLs transformadas para: $publicId');
       
       final presetsParam = presets.join(',');
-      final url = Uri.parse('$_baseUrl/api/upload/transform/$publicId?presets=$presetsParam');
+      // ✅ CORRIGIDO
+      final url = Uri.parse('$_baseUrl/api/uploads/transform/$publicId?presets=$presetsParam');
       final headers = await _getHeaders();
       
       final response = await http.get(
