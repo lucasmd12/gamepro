@@ -22,11 +22,12 @@ dependencies:
   firebase_crashlytics: ^4.0.0
   firebase_app_check: ^0.3.2+7
   
-  jitsi_meet:
+  jitsi_meet_wrapper:
     git:
       url: https://github.com/lucasmd12/jitsi_meet_wrapper_fix.git
-      ref: main  # ou a branch que você estiver usando, se for diferente
-
+      path: jitsi_meet_wrapper
+      ref: main
+      
   # Backend Communication
   http: ^1.2.1
   socket_io_client: ^3.1.2
