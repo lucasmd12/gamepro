@@ -9,6 +9,7 @@ class UserIdentityWidget extends StatelessWidget {
   final String? federationTag;
   final String? role;
   final String? clanRole;
+  final bool isOnline; // Adicionado para status online/offline
   final double size;
   final bool showFullIdentity;
   final TextStyle? textStyle;
@@ -24,6 +25,7 @@ class UserIdentityWidget extends StatelessWidget {
     this.federationTag,
     this.role,
     this.clanRole,
+    this.isOnline = false, // Valor padrão
     this.size = 40.0,
     this.showFullIdentity = true,
     this.textStyle,
@@ -101,44 +103,64 @@ class UserIdentityWidget extends StatelessWidget {
   }
 
   Widget _buildProfilePicture() {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: _getRoleBorderColor(),
-          width: 2,
+    return Stack(
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: _getRoleBorderColor(),
+              width: 2,
+            ),
+          ),
+          child: ClipOval(
+            child: avatar != null && avatar!.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: avatar!,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[800],
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[800],
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  )
+                : Container(
+                    color: Colors.grey[800],
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.grey,
+                    ),
+                  ),
+          ),
         ),
-      ),
-      child: ClipOval(
-        child: avatar != null && avatar!.isNotEmpty
-            ? CachedNetworkImage(
-                imageUrl: avatar!,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: Colors.grey[800],
-                  child: const Icon(
-                    Icons.person,
-                    color: Colors.grey,
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: Colors.grey[800],
-                  child: const Icon(
-                    Icons.person,
-                    color: Colors.grey,
-                  ),
-                ),
-              )
-            : Container(
-                color: Colors.grey[800],
-                child: const Icon(
-                  Icons.person,
-                  color: Colors.grey,
-                ),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: Container(
+            width: size * 0.25,
+            height: size * 0.25,
+            decoration: BoxDecoration(
+              color: isOnline ? Colors.green : Colors.red,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.black,
+                width: 1.5,
               ),
-      ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
