@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider';
 import 'package:lucasbeatsfederacao/providers/call_provider.dart';
 import 'package:lucasbeatsfederacao/services/voip_service.dart';
 import 'package:lucasbeatsfederacao/services/auth_service.dart';
 import 'package:lucasbeatsfederacao/models/call_model.dart' show CallStatus;
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 class CallPage extends StatefulWidget {
   final String? contactName;
   final String? contactId;
-
-  final String roomName; // Adicionado para Jitsi
+  final String roomName; // Pode ser o callId para P2P ou roomName para Jitsi
 
   const CallPage({
     super.key,
@@ -25,6 +25,9 @@ class CallPage extends StatefulWidget {
 class _CallPageState extends State<CallPage> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+  RTCVideoRenderer _localRenderer = RTCVideoRenderer();
+  RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
 
   @override
   void initState() {
@@ -42,25 +45,29 @@ class _CallPageState extends State<CallPage> with TickerProviderStateMixin {
     ));
     _pulseController.repeat(reverse: true);
 
-    // Iniciar a chamada Jitsi ao entrar na página
+    _localRenderer.initialize();
+    _remoteRenderer.initialize();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final voipService = Provider.of<VoIPService>(context, listen: false);
-      final authService = Provider.of<AuthService>(context, listen: false);
-      if (!voipService.isInCall) {
-        voipService.joinJitsiMeeting(
-          roomName: widget.roomName,
-          userDisplayName: authService.currentUser?.username ?? 'Usuário Anônimo',
-          // userEmail: null, // Removido pois o parâmetro não existe mais
-          // videoMuted: true, // Conforme especificado no exemplo do usuário
-          // audioMuted: false, // Conforme especificado no exemplo do usuário
-        );
-      }
+      // Atualizar renderers com os streams do VoIPService
+      voipService.localStream?.getAudioTracks().forEach((track) {
+        _localRenderer.srcObject = voipService.localStream;
+      });
+      voipService.remoteStream?.getAudioTracks().forEach((track) {
+        _remoteRenderer.srcObject = voipService.remoteStream;
+      });
+
+      // Se a chamada não estiver em andamento (P2P), o VoIPService já deve ter iniciado a conexão
+      // Se for Jitsi, o VoIPService já terá lidado com o join
     });
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _localRenderer.dispose();
+    _remoteRenderer.dispose();
     super.dispose();
   }
 
@@ -215,28 +222,42 @@ class _CallPageState extends State<CallPage> with TickerProviderStateMixin {
   }
 
   Widget _buildCallControls(BuildContext context, VoIPService voipService) {
-    // Para Jitsi, não há controles de aceitar/rejeitar chamadas diretamente na UI do app
-    // O Jitsi Meet Wrapper abre a interface do Jitsi que lida com isso.
-    // Apenas o botão de encerrar chamada é relevante aqui.
-    return _buildActiveCallControls(context, voipService);
-  }
-
-  Widget _buildActiveCallControls(BuildContext context, VoIPService voipService) {
     return Column(
       children: [
-        // Botão de encerrar chamada
-        _buildControlButton(
-          icon: Icons.call_end,
-          color: Colors.white,
-          backgroundColor: Colors.red,
-          size: 70,
-          iconSize: 35,
-          onPressed: () async {
-            await voipService.endCall();
-            if (mounted) {
-              Navigator.of(context).pop();
-            }
-          },
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildControlButton(
+              icon: Icons.mic_off,
+              color: Colors.white,
+              backgroundColor: Colors.grey.shade800,
+              onPressed: () {
+                voipService.toggleMute();
+              },
+              tooltip: 'Mudo',
+            ),
+            _buildControlButton(
+              icon: Icons.volume_up,
+              color: Colors.white,
+              backgroundColor: Colors.grey.shade800,
+              onPressed: () {
+                // Implementar toggle speaker
+              },
+              tooltip: 'Alto-falante',
+            ),
+            _buildControlButton(
+              icon: Icons.call_end,
+              color: Colors.white,
+              backgroundColor: Colors.red,
+              onPressed: () async {
+                await voipService.endCall();
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
+              },
+              tooltip: 'Encerrar Chamada',
+            ),
+          ],
         ),
       ],
     );
@@ -249,27 +270,31 @@ class _CallPageState extends State<CallPage> with TickerProviderStateMixin {
     required VoidCallback onPressed,
     double size = 60,
     double iconSize = 30,
+    String? tooltip,
   }) {
     return GestureDetector(
       onTap: onPressed,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: backgroundColor ?? Colors.grey.shade800,
-          boxShadow: [
-            BoxShadow( 
-              color: Colors.black.withAlpha((255 * 0.3).round()),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          color: color,
-          size: iconSize,
+      child: Tooltip(
+        message: tooltip ?? '',
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: backgroundColor ?? Colors.grey.shade800,
+            boxShadow: [
+              BoxShadow( 
+                color: Colors.black.withAlpha((255 * 0.3).round()),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: iconSize,
+          ),
         ),
       ),
     );
