@@ -26,7 +26,6 @@ class VoIPService extends ChangeNotifier {
   late SignalingService _signalingService;
 
   // --- ESTADO DO JITSI ---
-  // ✅ AÇÃO 1: CORRIGIDA A INSTANCIAÇÃO DO JITSI
   final _jitsiMeet = JitsiMeet();
 
   // --- ESTADO DO WEBRTC ---
@@ -52,7 +51,6 @@ class VoIPService extends ChangeNotifier {
   // --- CALLBACKS E HELPERS ---
   Function(String)? _onCallEnded;
   Function(String)? _onCallStarted;
-  // ✅ AÇÃO 2: PROPRIEDADE 'onCallStateChanged' RE-ADICIONADA
   Function(String)? onCallStateChanged;
   final Uuid _uuid = const Uuid();
 
@@ -87,22 +85,23 @@ class VoIPService extends ChangeNotifier {
     _onCallStarted = onCallStarted;
   }
 
+  // ✅ AÇÃO FINAL: JITSI LISTENER CORRIGIDO PARA A API DA VERSÃO 1.0.2
   void _setupJitsiListeners() {
-    _jitsiMeet.conferenceEvents.listen((event) {
-      Logger.info("Jitsi Event: ${event.type}, Data: ${event.data}");
-      switch (event.type) {
-        case JitsiMeetConferenceEventType.conferenceJoined:
-          _isInCall = true;
-          _onCallStarted?.call(_currentRoomId ?? "");
-          notifyListeners();
-          break;
-        case JitsiMeetConferenceEventType.conferenceTerminated:
-          endCall();
-          break;
-        default:
-          break;
-      }
-    });
+    _jitsiMeet.addListener(JitsiMeetingListener(
+      onConferenceJoined: (url) {
+        Logger.info("Jitsi Conference Joined: $url");
+        _isInCall = true;
+        _onCallStarted?.call(_currentRoomId ?? "");
+        notifyListeners();
+      },
+      onConferenceTerminated: (url, error) {
+        Logger.info("Jitsi Conference Terminated: $url, error: $error");
+        endCall();
+      },
+      onConferenceWillJoin: (url) {
+        Logger.info("Jitsi Conference Will Join: $url");
+      },
+    ));
     Logger.info("Jitsi listeners configured");
   }
 
@@ -242,7 +241,6 @@ class VoIPService extends ChangeNotifier {
     }
   }
 
-  // ✅ AÇÃO 3: MÉTODO 'getCallHistory' RE-ADICIONADO
   Future<List<CallHistoryModel>> getCallHistory({String? clanId, String? federationId}) async {
     try {
       final token = await _authService.token;
