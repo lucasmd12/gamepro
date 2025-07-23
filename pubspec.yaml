@@ -22,9 +22,10 @@ dependencies:
   firebase_crashlytics: ^4.0.0
   firebase_app_check: ^0.3.2+7
   
-
-  # Jitsi Meet SDK Flutter (oficial)
-  jitsi_meet: ^4.0.0
+  jitsi_meet:
+    git:
+      url: https://github.com/lucasmd12/jitsi_meet_wrapper_fix.git
+      ref: main  # ou a branch que você estiver usando, se for diferente
 
   # Backend Communication
   http: ^1.2.1
