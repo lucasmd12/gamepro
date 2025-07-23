@@ -85,23 +85,23 @@ class VoIPService extends ChangeNotifier {
     _onCallStarted = onCallStarted;
   }
 
-  // ✅ AÇÃO FINAL: JITSI LISTENER CORRIGIDO PARA A API DA VERSÃO 1.0.2
+  // ✅ AÇÃO FINAL: JITSI LISTENER CORRIGIDO PARA A API DA VERSÃO 10.3.0
   void _setupJitsiListeners() {
-    _jitsiMeet.addListener(JitsiMeetingListener(
-      onConferenceJoined: (url) {
-        Logger.info("Jitsi Conference Joined: $url");
-        _isInCall = true;
-        _onCallStarted?.call(_currentRoomId ?? "");
-        notifyListeners();
-      },
-      onConferenceTerminated: (url, error) {
-        Logger.info("Jitsi Conference Terminated: $url, error: $error");
-        endCall();
-      },
-      onConferenceWillJoin: (url) {
-        Logger.info("Jitsi Conference Will Join: $url");
-      },
-    ));
+    _jitsiMeet.conferenceEvents.listen((event) {
+      Logger.info("Jitsi Event: ${event.type}, Data: ${event.data}");
+      switch (event.type) {
+        case JitsiMeetConferenceEventType.conferenceJoined:
+          _isInCall = true;
+          _onCallStarted?.call(_currentRoomId ?? "");
+          notifyListeners();
+          break;
+        case JitsiMeetConferenceEventType.conferenceTerminated:
+          endCall();
+          break;
+        default:
+          break;
+      }
+    });
     Logger.info("Jitsi listeners configured");
   }
 
