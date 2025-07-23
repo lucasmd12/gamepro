@@ -112,14 +112,41 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             color: Colors.grey[800],
-            child: Text(
-              'Conteúdo do Chat Contextual para: ${widget.chatContext}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Chat: ${widget.chatContext == 'global' ? 'Global' : widget.chatContext}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (widget.chatContext == 'global')
+                  Consumer<VoIPService>(
+                    builder: (context, voipService, child) {
+                      if (voipService.isInCall && voipService.currentRoomId != null) {
+                        // Para Jitsi, o SDK não expõe diretamente a lista de participantes.
+                        // Precisamos de um mecanismo para coletar isso via listeners.
+                        // Por enquanto, vamos exibir um placeholder ou uma mensagem genérica.
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'Chamada de voz global ativa: ${voipService.currentRoomId}',
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontSize: 12,
+                            ),
+                          ),
+                        );
+                      } else {
+                        return const SizedBox.shrink();
+                      }
+                    },
+                  ),
+              ],
             ),
           ),
           
@@ -216,7 +243,7 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
     final isSystem = message.isSystem ?? false;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUser = authProvider.currentUser;
-    final isOwnMessage = currentUser?.username == message.senderName;
+    final isOwnMessage = currentUser?.id == message.senderId; // Comparar por ID para garantir
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -231,14 +258,17 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
             CircleAvatar(
               radius: 16,
               backgroundColor: Colors.blue,
-              child: Text(
-                message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              backgroundImage: message.senderAvatarUrl != null ? NetworkImage(message.senderAvatarUrl!) : null,
+              child: message.senderAvatarUrl == null
+                  ? Text(
+                      message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : "?",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 8),
           ],
@@ -256,16 +286,56 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!isSystem && !isOwnMessage)
-                    Text(
-                      message.senderName,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                  if (!isSystem) // Não exibir para mensagens do sistema
+                    Row(
+                      children: [
+                        if (message.senderClanFlag != null && message.senderClanFlag!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4.0),
+                            child: Text(
+                              message.senderClanFlag!,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        if (message.senderFederationTag != null && message.senderFederationTag!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4.0),
+                            child: Text(
+                              message.senderFederationTag!,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        Text(
+                          message.senderName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (!isSystem && (message.senderClanRole != null || message.senderRole != null)) // Exibir cargo
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0, bottom: 4.0),
+                      child: Text(
+                        message.senderClanRole ?? message.senderRole!,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ),
-                  if (!isSystem && !isOwnMessage) const SizedBox(height: 4),
+                  if (!isSystem && message.fileUrl == null) const SizedBox(height: 4),
                   if (message.fileUrl != null) ...[
                     if (message.type == 'image')
                       Image.network(
@@ -311,14 +381,17 @@ class _ContextualChatScreenState extends State<ContextualChatScreen> {
             CircleAvatar(
               radius: 16,
               backgroundColor: Colors.green,
-              child: Text(
-                message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              backgroundImage: currentUser?.avatar != null ? NetworkImage(currentUser!.avatar!) : null,
+              child: currentUser?.avatar == null
+                  ? Text(
+                      currentUser!.username.isNotEmpty ? currentUser.username[0].toUpperCase() : "?",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
             ),
           ],
         ],
