@@ -5,8 +5,8 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:http/http.dart' as http;
-// ✅ AÇÃO 1: GARANTIR QUE O IMPORT PRINCIPAL ESTÁ AQUI
-import 'package:jitsi_meet_flutter_sdk/jitsi_meet_flutter_sdk.dart';
+// ✅ AÇÃO 1: IMPORT ALTERADO PARA O NOVO PACOTE
+import 'package:jitsi_meet/jitsi_meet.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
 
@@ -27,8 +27,8 @@ class VoIPService extends ChangeNotifier {
   late SignalingService _signalingService;
 
   // --- ESTADO DO JITSI ---
-  final _jitsiMeet = JitsiMeet();
-
+  // A instanciação é feita via JitsiMeet.instance no novo pacote
+  
   // --- ESTADO DO WEBRTC ---
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
@@ -86,23 +86,26 @@ class VoIPService extends ChangeNotifier {
     _onCallStarted = onCallStarted;
   }
 
-  // ✅ AÇÃO 2: CORREÇÃO FINAL E DEFINITIVA DO LISTENER DO JITSI
+  // ✅ AÇÃO 2: LISTENER CORRIGIDO PARA A API DO PACOTE 'jitsi_meet'
   void _setupJitsiListeners() {
-    _jitsiMeet.addListener(JitsiMeetingListener(
-      onConferenceJoined: (url) {
-        Logger.info("Jitsi Conference Joined: $url");
+    JitsiMeet.addListener(JitsiMeetingListener(
+      onConferenceJoined: (message) {
+        Logger.info("Jitsi Conference Joined: $message");
         _isInCall = true;
         _onCallStarted?.call(_currentRoomId ?? "");
         notifyListeners();
       },
-      onConferenceTerminated: (url, error) {
-        Logger.info("Jitsi Conference Terminated: $url, error: $error");
+      onConferenceTerminated: (message) {
+        Logger.info("Jitsi Conference Terminated: $message");
         endCall();
       },
-      onConferenceWillJoin: (url) {
-        Logger.info("Jitsi Conference Will Join: $url");
+      onConferenceWillJoin: (message) {
+        Logger.info("Jitsi Conference Will Join: $message");
       },
-      // Você pode adicionar outros listeners aqui se precisar (ex: onParticipantJoined)
+      onError: (error) {
+        Logger.error("Jitsi Error: $error");
+        endCall(); // Encerra a chamada em caso de erro
+      }
     ));
     Logger.info("Jitsi listeners configured using addListener.");
   }
@@ -197,7 +200,7 @@ class VoIPService extends ChangeNotifier {
         await startVoiceCall(
           roomId: responseData['roomName'],
           displayName: displayName,
-          token: responseData['jitsiToken'],
+          // token: responseData['jitsiToken'], // O pacote antigo não suporta token JWT
           isAudioOnly: !isVideoCall,
         );
       } else {
@@ -287,11 +290,11 @@ class VoIPService extends ChangeNotifier {
 
   // --- MÉTODOS DE CONTROLE DE MÍDIA (JITSI E WEBRTC) ---
 
+  // ✅ AÇÃO 3: MÉTODO ADAPTADO PARA A API DO PACOTE 'jitsi_meet'
   Future<void> startVoiceCall({
     required String roomId,
     required String displayName,
     String? serverUrl,
-    String? token,
     bool isAudioOnly = true,
   }) async {
     if (_isInCall) throw Exception("Já existe uma chamada em andamento");
@@ -301,28 +304,22 @@ class VoIPService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final options = JitsiMeetConferenceOptions(
-        serverURL: serverUrl ?? 'https://meet.jit.si',
+      final options = JitsiMeetingOptions(
         room: roomId,
-        token: token,
-        configOverrides: {
-          'startWithAudioMuted': false,
-          'startWithVideoMuted': true,
-          'requireDisplayName': true,
-          'enableWelcomePage': false,
-          'prejoinPageEnabled': false,
-        },
+        serverURL: serverUrl,
+        userDisplayName: displayName,
+        audioOnly: isAudioOnly,
+        audioMuted: false,
+        videoMuted: isAudioOnly,
         featureFlags: {
-          'unsaferoomwarning.enabled': false,
-          'invite.enabled': false,
-          'recording.enabled': false,
-          'live-streaming.enabled': false,
-          'video-share.enabled': false,
-          'screen-sharing.enabled': true,
+          FeatureFlagEnum.INVITE_ENABLED: false,
+          FeatureFlagEnum.RECORDING_ENABLED: false,
+          FeatureFlagEnum.LIVE_STREAMING_ENABLED: false,
+          FeatureFlagEnum.TOOLBOX_ALWAYS_VISIBLE: false,
+          FeatureFlagEnum.WELCOME_PAGE_ENABLED: false,
         },
-        userInfo: JitsiMeetUserInfo(displayName: displayName),
       );
-      await _jitsiMeet.join(options);
+      await JitsiMeet.joinMeeting(options);
     } catch (e) {
       Logger.error('Failed to start voice call: $e');
       await endCall();
@@ -338,7 +335,9 @@ class VoIPService extends ChangeNotifier {
     if (_peerConnection != null) {
       await _closeWebRTCCall();
     } else {
-      await _jitsiMeet.hangUp();
+      // O pacote antigo não tem um método hangUp() explícito,
+      // a chamada termina quando o usuário fecha a tela do Jitsi.
+      // A detecção é feita pelo listener onConferenceTerminated.
     }
 
     _isInCall = false;
@@ -422,7 +421,7 @@ class VoIPService extends ChangeNotifier {
   @override
   void dispose() {
     _closeWebRTCCall();
-    _jitsiMeet.hangUp();
+    JitsiMeet.removeAllListeners(); // Método correto para limpar listeners neste pacote
     super.dispose();
   }
 }
