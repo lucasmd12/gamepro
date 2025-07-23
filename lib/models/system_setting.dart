@@ -1,4 +1,3 @@
-
 class SystemSetting {
   bool maintenanceMode;
   bool registrationEnabled;
@@ -19,6 +18,29 @@ class SystemSetting {
     required this.maxUsersPerClan,
     required this.maxClansPerFederation,
   });
+
+  // ✅ AÇÃO 1: MÉTODO copyWith ADICIONADO
+  SystemSetting copyWith({
+    bool? maintenanceMode,
+    bool? registrationEnabled,
+    String? serverRegion,
+    bool? chatEnabled,
+    bool? voiceEnabled,
+    bool? notificationsEnabled,
+    int? maxUsersPerClan,
+    int? maxClansPerFederation,
+  }) {
+    return SystemSetting(
+      maintenanceMode: maintenanceMode ?? this.maintenanceMode,
+      registrationEnabled: registrationEnabled ?? this.registrationEnabled,
+      serverRegion: serverRegion ?? this.serverRegion,
+      chatEnabled: chatEnabled ?? this.chatEnabled,
+      voiceEnabled: voiceEnabled ?? this.voiceEnabled,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      maxUsersPerClan: maxUsersPerClan ?? this.maxUsersPerClan,
+      maxClansPerFederation: maxClansPerFederation ?? this.maxClansPerFederation,
+    );
+  }
 
   factory SystemSetting.fromJson(Map<String, dynamic> json) {
     return SystemSetting(
@@ -46,5 +68,3 @@ class SystemSetting {
     };
   }
 }
-
-
