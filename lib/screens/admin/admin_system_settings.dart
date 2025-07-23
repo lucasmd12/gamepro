@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:lucasbeatsfederacao/services/admin_service.dart'; // Assumindo que você terá um AdminService
-import 'package:lucasbeatsfederacao/models/system_setting.dart'; // Assumindo que você terá um modelo SystemSetting no Frontend
+import 'package:lucasbeatsfederacao/services/admin_service.dart';
+import 'package:lucasbeatsfederacao/models/system_setting.dart';
+import 'package:lucasbeatsfederacao/services/notification_service.dart'; // Import adicionado
 
 class AdminSystemSettingsScreen extends StatefulWidget {
   const AdminSystemSettingsScreen({super.key});
@@ -11,11 +12,295 @@ class AdminSystemSettingsScreen extends StatefulWidget {
 }
 
 class _AdminSystemSettingsScreenState extends State<AdminSystemSettingsScreen> {
+  final NotificationService _notificationService = NotificationService(); // Instância do NotificationService
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('System Settings')),
-      body: const Center(child: Text('Implementation pending...')),
+      appBar: AppBar(title: const Text("Configurações do Sistema")),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSettingsSection(
+                    "Configurações Gerais",
+                    Icons.settings,
+                    Colors.blue,
+                    [
+                      _buildSwitchSetting(
+                        "Modo de Manutenção",
+                        "Ativa ou desativa o modo de manutenção do sistema.",
+                        _currentSettings.maintenanceMode,
+                        (value) {
+                          setState(() {
+                            _currentSettings = _currentSettings.copyWith(maintenanceMode: value);
+                          });
+                        },
+                        Colors.blue,
+                      ),
+                      _buildSwitchSetting(
+                        "Registro de Usuários",
+                        "Permite ou impede novos registros de usuários.",
+                        _currentSettings.registrationEnabled,
+                        (value) {
+                          setState(() {
+                            _currentSettings = _currentSettings.copyWith(registrationEnabled: value);
+                          });
+                        },
+                        Colors.blue,
+                      ),
+                      _buildSwitchSetting(
+                        "Chat Habilitado",
+                        "Ativa ou desativa o sistema de chat global.",
+                        _currentSettings.chatEnabled,
+                        (value) {
+                          setState(() {
+                            _currentSettings = _currentSettings.copyWith(chatEnabled: value);
+                          });
+                        },
+                        Colors.blue,
+                      ),
+                      _buildSwitchSetting(
+                        "Voz Habilitada",
+                        "Ativa ou desativa as funcionalidades de voz (VoIP).",
+                        _currentSettings.voiceEnabled,
+                        (value) {
+                          setState(() {
+                            _currentSettings = _currentSettings.copyWith(voiceEnabled: value);
+                          });
+                        },
+                        Colors.blue,
+                      ),
+                      _buildSwitchSetting(
+                        "Notificações Habilitadas",
+                        "Ativa ou desativa o envio de notificações push.",
+                        _currentSettings.notificationsEnabled,
+                        (value) {
+                          setState(() {
+                            _currentSettings = _currentSettings.copyWith(notificationsEnabled: value);
+                          });
+                        },
+                        Colors.blue,
+                      ),
+                      _buildDropdownSetting(
+                        "Região do Servidor",
+                        "Define a região principal do servidor para otimização de latência.",
+                        _currentSettings.serverRegion,
+                        _regions,
+                        (value) {
+                          setState(() {
+                            _currentSettings = _currentSettings.copyWith(serverRegion: value);
+                          });
+                        },
+                      ),
+                      _buildSliderSetting(
+                        "Máx. Usuários por Clã",
+                        "Define o número máximo de usuários permitidos por clã.",
+                        _currentSettings.maxUsersPerClan.toDouble(),
+                        10,
+                        200,
+                        (value) {
+                          setState(() {
+                            _currentSettings = _currentSettings.copyWith(maxUsersPerClan: value.round());
+                          });
+                        },
+                      ),
+                      _buildSliderSetting(
+                        "Máx. Clãs por Federação",
+                        "Define o número máximo de clãs permitidos por federação.",
+                        _currentSettings.maxClansPerFederation.toDouble(),
+                        1,
+                        50,
+                        (value) {
+                          setState(() {
+                            _currentSettings = _currentSettings.copyWith(maxClansPerFederation: value.round());
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSettingsSection(
+                    "Gerenciamento de Notificações",
+                    Icons.notifications_active,
+                    Colors.orange,
+                    [
+                      _buildActionSetting(
+                        "Enviar Notificação Global",
+                        "Envie uma mensagem para todos os usuários do aplicativo.",
+                        Icons.send,
+                        Colors.orange,
+                        () {
+                          _showSendGlobalNotificationDialog(context);
+                        },
+                      ),
+                      _buildActionSetting(
+                        "Convidar Usuário para Clã",
+                        "Envie um convite para um usuário se juntar a um clã específico.",
+                        Icons.person_add,
+                        Colors.orange,
+                        () {
+                          _showInviteUserToClanDialog(context);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSettingsSection(
+                    "Ferramentas do Sistema",
+                    Icons.build,
+                    Colors.red,
+                    [
+                      _buildActionSetting(
+                        "Criar Backup do Sistema",
+                        "Gere um backup completo de todos os dados do sistema.",
+                        Icons.backup,
+                        Colors.red,
+                        _createBackup,
+                      ),
+                      _buildActionSetting(
+                        "Limpar Cache do Sistema",
+                        "Limpe o cache de dados temporários para otimizar o desempenho.",
+                        Icons.cleaning_services,
+                        Colors.red,
+                        _clearCache,
+                      ),
+                      _buildActionSetting(
+                        "Reiniciar Servidor",
+                        "Reinicie o servidor principal do aplicativo. Isso desconectará todos os usuários.",
+                        Icons.restart_alt,
+                        Colors.red,
+                        _restartServer,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _saveSettings,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            "Salvar Configurações",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  // Diálogo para enviar notificação global
+  void _showSendGlobalNotificationDialog(BuildContext context) {
+    final TextEditingController _titleController = TextEditingController();
+    final TextEditingController _bodyController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text("Enviar Notificação Global"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: "Título"),
+              ),
+              TextField(
+                controller: _bodyController,
+                decoration: const InputDecoration(labelText: "Corpo da Mensagem"),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: const Text("Cancelar"),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            ElevatedButton(
+              child: const Text("Enviar"),
+              onPressed: () async {
+                try {
+                  await _notificationService.sendGlobalNotification(
+                    _titleController.text,
+                    _bodyController.text,
+                  );
+                  Navigator.of(dialogContext).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Notificação global enviada com sucesso!")),
+                  );
+                } catch (e) {
+                  Navigator.of(dialogContext).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Erro ao enviar notificação global: $e")),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Diálogo para convidar usuário para clã
+  void _showInviteUserToClanDialog(BuildContext context) {
+    final TextEditingController _userIdController = TextEditingController();
+    final TextEditingController _clanIdController = TextEditingController(); // TODO: Substituir por Dropdown/Search
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text("Convidar Usuário para Clã"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _userIdController,
+                decoration: const InputDecoration(labelText: "ID do Usuário Alvo"),
+              ),
+              TextField(
+                controller: _clanIdController,
+                decoration: const InputDecoration(labelText: "ID do Clã"),
+              ), // TODO: Implementar seleção de clã mais amigável
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: const Text("Cancelar"),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            ElevatedButton(
+              child: const Text("Convidar"),
+              onPressed: () async {
+                // TODO: Chamar o serviço de notificação para enviar o convite de clã
+                print("Convidar Usuário ${_userIdController.text} para Clã ${_clanIdController.text}");
+                Navigator.of(dialogContext).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Convite de clã enviado (simulado).")), // Substituir por sucesso real
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
   SystemSetting _currentSettings = SystemSetting(
