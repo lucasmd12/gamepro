@@ -1,229 +1,133 @@
-// lib/services/notification_service.dart
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter/foundation.dart'; // Import ChangeNotifier
-import 'package:lucasbeatsfederacao/utils/logger.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:gamepro/services/api_service.dart'; // Import adicionado
+import 'dart:async'; // Import adicionado
 
-class NotificationService extends ChangeNotifier {
-  // Callback para chamadas recebidas
-  Function(Map<String, dynamic>)? onIncomingCall;
+class NotificationService {
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final ApiService _apiService; // Instância do ApiService
 
-  NotificationService();
+  // Stream para notificar a UI sobre novas notificações
+  final _onNotificationReceived = StreamController<RemoteMessage>.broadcast();
+  Stream<RemoteMessage> get onNotificationReceived => _onNotificationReceived.stream;
 
-  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
-  bool _initialized = false;
+  NotificationService._privateConstructor(this._apiService); // Construtor modificado
+  static final NotificationService _instance = NotificationService._privateConstructor(ApiService()); // Instância com ApiService
 
-  Future<void> initialize() async {
-    if (_initialized) return;
-
-    try {
-      // Configurações para Android
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-      
-      // Configurações para iOS
-      const iosSettings = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
-      );
-
-      const initSettings = InitializationSettings(
-        android: androidSettings,
-        iOS: iosSettings,
-      );
-
-      await _notifications.initialize(
-        initSettings,
-        onDidReceiveNotificationResponse: _onNotificationTapped,
-      );
-
-      // Solicitar permissões
-      await _requestPermissions();
-      
-      _initialized = true;
-      Logger.info('Serviço de notificações inicializado');
-    } catch (e) {
-      Logger.error('Erro ao inicializar notificações: $e');
-    }
+  factory NotificationService() {
+    return _instance;
   }
 
-  Future<void> _requestPermissions() async {
-    try {
-      // Permissão para notificações
-      final status = await Permission.notification.request();
-      if (status.isGranted) {
-        Logger.info('Permissão de notificação concedida');
-      } else {
-        Logger.warning('Permissão de notificação negada');
+  Future<void> initFirebaseMessaging() async {
+    // Solicitar permissões de notificação
+    NotificationSettings settings = await _firebaseMessaging.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      print('User granted permission');
+    } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+      print('User granted provisional permission');
+    } else {
+      print('User declined or has not accepted permission');
+    }
+
+    // Obter o token FCM
+    String? fcmToken = await _firebaseMessaging.getToken();
+    print("FCM Token: $fcmToken");
+    await sendFcmTokenToBackend(fcmToken); // Envia o token para o backend
+
+    // Lidar com mensagens em primeiro plano
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
+
+      if (message.notification != null) {
+        print('Message also contained a notification: ${message.notification}');
       }
-    } catch (e) {
-      Logger.error('Erro ao solicitar permissões: $e');
-    }
+      _onNotificationReceived.add(message);
+    });
+
+    // Lidar com mensagens quando o aplicativo é aberto a partir de uma notificação
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('A new onMessageOpenedApp event was published!');
+      // TODO: Implementar navegação ou lógica específica ao abrir a notificação
+    });
+
+    // Lidar com mensagens quando o aplicativo está em segundo plano ou encerrado
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   }
 
-  void _onNotificationTapped(NotificationResponse response) {
-    Logger.info('Notificação tocada: ${response.payload}');
-    // Aqui você pode navegar para telas específicas baseado no payload
+  // Handler para mensagens em segundo plano/encerrado
+  @pragma('vm:entry-point')
+  static Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+    // Se você estiver usando outros serviços do Firebase em segundo plano, certifique-se de inicializá-los aqui
+    // await Firebase.initializeApp();
+    print('Handling a background message: ${message.messageId}');
+    // TODO: Processar a notificação em segundo plano (ex: salvar no banco de dados local)
   }
 
-  // Notificação de chamada recebida
-  Future<void> showIncomingCallNotification({
-    required String callerName,
-    required String callId,
-  }) async {
+  Future<void> subscribeToTopic(String topic) async {
+    await _firebaseMessaging.subscribeToTopic(topic);
+    print('Subscribed to topic: $topic');
+  }
+
+  Future<void> unsubscribeFromTopic(String topic) async {
+    await _firebaseMessaging.unsubscribeFromTopic(topic);
+    print('Unsubscribed from topic: $topic');
+  }
+
+  // Novos métodos para enviar notificações via backend
+  Future<void> sendGlobalNotification(String title, String body) async {
     try {
-      const androidDetails = AndroidNotificationDetails(
-        'incoming_calls',
-        'Chamadas Recebidas',
-        channelDescription: 'Notificações de chamadas VoIP recebidas',
-        importance: Importance.max,
-        priority: Priority.high,
-        category: AndroidNotificationCategory.call,
-        fullScreenIntent: true,
-        ongoing: true,
-        autoCancel: false,
-        actions: [
-          AndroidNotificationAction(
-            'accept_call',
-            'Aceitar',
-            icon: DrawableResourceAndroidBitmap('ic_call_accept'),
-          ),
-          AndroidNotificationAction(
-            'reject_call',
-            'Rejeitar',
-            icon: DrawableResourceAndroidBitmap('ic_call_reject'),
-          ),
-        ],
-      );
-
-      const iosDetails = DarwinNotificationDetails(
-        categoryIdentifier: 'incoming_call',
-        interruptionLevel: InterruptionLevel.critical,
-      );
-
-      const details = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
-      await _notifications.show(
-        callId.hashCode,
-        'Chamada Recebida',
-        '$callerName está chamando...',
-        details,
-        payload: 'incoming_call:$callId',
-      );
-
-      Logger.info('Notificação de chamada exibida para $callerName');
+      await _apiService.post('/api/notifications/global', {
+        'title': title,
+        'body': body,
+      });
+      print('Notificação global enviada com sucesso para o backend.');
     } catch (e) {
-      Logger.error('Erro ao exibir notificação de chamada: $e');
+      print('Erro ao enviar notificação global: $e');
+      rethrow;
     }
   }
 
-  // Notificação de nova mensagem
-  Future<void> showMessageNotification({
-    required String senderName,
-    required String message,
-    required String channelId,
-  }) async {
+  Future<void> sendInviteNotification(String userId, String clanId) async {
     try {
-      const androidDetails = AndroidNotificationDetails(
-        'messages',
-        'Mensagens',
-        channelDescription: 'Notificações de novas mensagens',
-        importance: Importance.high,
-        priority: Priority.high,
-        styleInformation: BigTextStyleInformation(''),
-      );
-
-      const iosDetails = DarwinNotificationDetails();
-
-      const details = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
-      await _notifications.show(
-        DateTime.now().millisecondsSinceEpoch.remainder(100000),
-        'Nova mensagem de $senderName',
-        message,
-        details,
-        payload: 'message:$channelId',
-      );
-
-      Logger.info('Notificação de mensagem exibida de $senderName');
+      await _apiService.post('/api/notifications/invite', {
+        'userId': userId,
+        'clanId': clanId,
+      });
+      print('Convite de clã enviado com sucesso para o backend.');
     } catch (e) {
-      Logger.error('Erro ao exibir notificação de mensagem: $e');
+      print('Erro ao enviar convite de clã: $e');
+      rethrow;
     }
   }
 
-  // Notificação de sistema/admin
-  Future<void> showSystemNotification({
-    required String title,
-    required String message,
-    String? payload,
-  }) async {
+  Future<void> sendFcmTokenToBackend(String? fcmToken) async {
+    if (fcmToken == null) return;
     try {
-      const androidDetails = AndroidNotificationDetails(
-        'system',
-        'Sistema',
-        channelDescription: 'Notificações do sistema e administração',
-        importance: Importance.high,
-        priority: Priority.high,
-        icon: '@mipmap/ic_launcher',
+      await _apiService.post(
+        '/api/users/fcm-token',
+        {
+          'fcmToken': fcmToken,
+        },
       );
-
-      const iosDetails = DarwinNotificationDetails();
-
-      const details = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
-      await _notifications.show(
-        DateTime.now().millisecondsSinceEpoch.remainder(100000),
-        title,
-        message,
-        details,
-        payload: payload ?? 'system',
-      );
-
-      Logger.info('Notificação de sistema exibida: $title');
+      print('FCM Token enviado para o backend com sucesso.');
     } catch (e) {
-      Logger.error('Erro ao exibir notificação de sistema: $e');
+      print('Erro ao enviar FCM Token para o backend: $e');
+      // Não rethrow aqui, pois não queremos que a falha no envio do token impeça o app de funcionar.
     }
   }
 
-  // Cancelar notificação específica
-  Future<void> cancelNotification(int id) async {
-    try {
-      await _notifications.cancel(id);
-      Logger.info('Notificação $id cancelada');
-    } catch (e) {
-      Logger.error('Erro ao cancelar notificação $id: $e');
-    }
-  }
-
-  // Cancelar todas as notificações
-  Future<void> cancelAllNotifications() async {
-    try {
-      await _notifications.cancelAll();
-      Logger.info('Todas as notificações canceladas');
-    } catch (e) {
-      Logger.error('Erro ao cancelar todas as notificações: $e');
-    }
-  }
-
-  // Verificar se as notificações estão habilitadas
-  Future<bool> areNotificationsEnabled() async {
-    try {
-      final status = await Permission.notification.status;
-      return status.isGranted;
-    } catch (e) {
-      Logger.error('Erro ao verificar status das notificações: $e');
-      return false;
-    }
+  void dispose() {
+    _onNotificationReceived.close();
   }
 }
-
 
