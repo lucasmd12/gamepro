@@ -4,12 +4,14 @@ import 'package:lucasbeatsfederacao/models/federation_model.dart';
 import 'package:lucasbeatsfederacao/models/user_model.dart';
 import 'package:lucasbeatsfederacao/services/api_service.dart';
 import 'package:lucasbeatsfederacao/utils/logger.dart';
-import 'package:lucasbeatsfederacao/models/system_setting.dart'; // Importar o modelo SystemSetting
+import 'package:lucasbeatsfederacao/models/system_setting.dart';
 
 class AdminService {
-  final ApiService _apiService;
+  // ✅ CORREÇÃO 1: O serviço agora cria sua própria instância do ApiService.
+  // Isso resolve o erro de dependência não injetada.
+  final ApiService _apiService = ApiService();
 
-  AdminService(this._apiService);
+  // O construtor antigo foi removido, pois não precisamos mais injetar a dependência manualmente.
 
   // Gerenciamento de Usuários
   Future<List<User>> getAllUsers() async {
@@ -93,13 +95,14 @@ class AdminService {
     try {
       final response = await _apiService.post('/api/admin/clans', clanData);
       if (response is Map<String, dynamic>) {
-        return Clan.fromJson(json.encode(response));
+        // A resposta da API já é um Map, não precisa de json.encode
+        return Clan.fromJson(response);
       } else {
         throw Exception('Formato de resposta inválido para createClan');
       }
     } catch (e, stackTrace) {
       Logger.error('Erro ao criar clã', error: e.toString(), stackTrace: stackTrace);
-      rethrow; // Assuming this was intended, it's needed if you want to propagate the error. If not, you might return a specific value or null depending on your design.
+      rethrow;
     }
   }
 
@@ -107,13 +110,14 @@ class AdminService {
     try {
       final response = await _apiService.put('/api/admin/clans/$clanId', clanData);
       if (response is Map<String, dynamic>) {
-        return Clan.fromJson(json.encode(response));
+        // A resposta da API já é um Map, não precisa de json.encode
+        return Clan.fromJson(response);
       } else {
         throw Exception('Formato de resposta inválido para updateClan');
       }
     } catch (e, stackTrace) {
- Logger.error('Erro ao atualizar clã: $clanId', error: e.toString(), stackTrace: stackTrace);
-      rethrow; // Assuming this was intended, it's needed if you want to propagate the error. If not, you might return a specific value or null depending on your design.
+      Logger.error('Erro ao atualizar clã: $clanId', error: e.toString(), stackTrace: stackTrace);
+      rethrow;
     }
   }
 
@@ -296,7 +300,7 @@ class AdminService {
       } else {
         throw Exception('Formato de resposta inválido para getUserStats');
       }
-    } catch (e, stackTrace) {
+    } catch (e, stackTrace)
       Logger.error('Erro ao buscar estatísticas de usuário', error: e, stackTrace: stackTrace);
       rethrow;
     }
@@ -313,6 +317,32 @@ class AdminService {
     } catch (e, stackTrace) {
       Logger.error('Erro ao buscar estatísticas de clãs e federações', error: e, stackTrace: stackTrace);
       rethrow;
+    }
+  }
+
+  // ✅ CORREÇÃO 2: MÉTODOS FALTANTES ADICIONADOS AQUI
+  
+  /// Cria uma nova federação com dados de território.
+  Future<Map<String, dynamic>> createFederationWithTerritory(Map<String, dynamic> data) async {
+    try {
+      const String endpoint = '/api/admin/federations/create-with-territory';
+      final response = await _apiService.post(endpoint, data, requireAuth: true);
+      return response;
+    } catch (e) {
+      Logger.error('Erro em createFederationWithTerritory', error: e);
+      return {'success': false, 'message': 'Erro de comunicação: $e'};
+    }
+  }
+
+  /// Cria um novo clã com dados de território.
+  Future<Map<String, dynamic>> createClanWithTerritory(Map<String, dynamic> data) async {
+    try {
+      const String endpoint = '/api/admin/clans/create-with-territory';
+      final response = await _apiService.post(endpoint, data, requireAuth: true);
+      return response;
+    } catch (e) {
+      Logger.error('Erro em createClanWithTerritory', error: e);
+      return {'success': false, 'message': 'Erro de comunicação: $e'};
     }
   }
 }
